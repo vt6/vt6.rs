@@ -1,0 +1,6 @@
+[package]
+name = "vt6"
+version = "0.1.0"
+authors = ["Stefan Majewsky <majewsky@gmx.net>"]
+
+[dependencies]
