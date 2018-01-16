@@ -1,7 +1,6 @@
 /******************************************************************************
 *
-*  Copyright 2018 Stefan Majewsky <majewsky@gmx.net>
-*
+*  Copyright 2018 Stefan Majewsky <majewsky@gmx.net> 
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
 *  You may obtain a copy of the License at
@@ -16,4 +15,16 @@
 *
 ******************************************************************************/
 
-pub mod msg;
+mod atom;
+mod parse;
+mod sexp;
+#[cfg(test)]
+mod tests;
+
+pub use msg::atom::Atom;
+pub use msg::sexp::Element;
+pub use msg::sexp::SExpression;
+pub use msg::parse::ParserState;
+pub use msg::parse::ParseError;
+pub use msg::parse::ParseErrorKind;
+pub use msg::parse::ParseResult;
