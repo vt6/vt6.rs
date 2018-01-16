@@ -21,10 +21,10 @@ mod sexp;
 #[cfg(test)]
 mod tests;
 
-pub use msg::atom::Atom;
-pub use msg::sexp::Element;
-pub use msg::sexp::SExpression;
-pub use msg::parse::ParserState;
-pub use msg::parse::ParseError;
-pub use msg::parse::ParseErrorKind;
-pub use msg::parse::ParseResult;
+pub use core::msg::atom::Atom;
+pub use core::msg::sexp::Element;
+pub use core::msg::sexp::SExpression;
+pub use core::msg::parse::ParserState;
+pub use core::msg::parse::ParseError;
+pub use core::msg::parse::ParseErrorKind;
+pub use core::msg::parse::ParseResult;

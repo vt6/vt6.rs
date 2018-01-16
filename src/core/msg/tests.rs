@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use msg::{Atom, Element, ParserState, SExpression};
+use core::msg::{Atom, Element, ParserState, SExpression};
 
 #[test]
 fn parse_message() {

@@ -19,8 +19,8 @@
 use std::fmt;
 use std::fmt::Write;
 
-use msg::atom::Atom;
-use msg::parse;
+use core::msg::atom::Atom;
+use core::msg::parse;
 
 ///This enum represents an element of an s-expression, as defined in
 ///[vt6/core1.0, section 2.1](https://vt6.io/std/core/1.0/#section-2-1).

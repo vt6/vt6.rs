@@ -16,15 +16,15 @@
 *
 ******************************************************************************/
 
-///THIS MODULE IS PRIVATE! The public exports are used by sibling modules (vt6::msg::atom and
-///vt6::msg:sexp), and some things are reexported into the globally public API by the vt6::msg
-///module.
+///THIS MODULE IS PRIVATE! The public exports are used by sibling modules (vt6::core::msg::atom and
+///vt6::core::msg:sexp), and some things are reexported into the globally public API by the
+///vt6::core::msg module.
 
 use std::error::Error;
 use std::fmt;
 
-use msg::atom::Atom;
-use msg::sexp::{Element, SExpression};
+use core::msg::atom::Atom;
+use core::msg::sexp::{Element, SExpression};
 
 ////////////////////////////////////////////////////////////////////////////////
 // result and error types
@@ -61,7 +61,7 @@ impl fmt::Display for ParseErrorKind {
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub struct ParseError {
     ///The position within the original bytestring (the `buffer` attribute of
-    ///vt6::msg::ParserState).
+    ///vt6::core::msg::ParserState).
     pub offset: usize,
     ///The kind of parse error that occurred.
     pub kind: ParseErrorKind,

@@ -19,7 +19,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 
-use msg::parse;
+use core::msg::parse;
 
 ///An atom is either a bareword or a quoted string, as defined in
 ///[vt6/core1.0, section 2.1](https://vt6.io/std/core/1.0/#section-2-1).
