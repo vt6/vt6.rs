@@ -21,28 +21,19 @@ use core::msg::{Atom, Element, ParserState, SExpression};
 #[test]
 fn parse_message() {
     let input = b"()";
-    let mut state = ParserState {
-        buffer: &input[..],
-        cursor: 0,
-    };
+    let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![]);
     assert_eq!(SExpression::parse(&mut state), Ok(parsed));
 
     let input = br#"(aaa)"#;
-    let mut state = ParserState {
-        buffer: &input[..],
-        cursor: 0,
-    };
+    let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![
         Element::Atom(Atom::new("aaa".to_owned())),
     ]);
     assert_eq!(SExpression::parse(&mut state), Ok(parsed));
 
     let input = br#"(aaa (bbb) fff)"#;
-    let mut state = ParserState {
-        buffer: &input[..],
-        cursor: 0,
-    };
+    let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![
         Element::Atom(Atom::new("aaa".to_owned())),
         Element::SExpression(SExpression(vec![
@@ -53,10 +44,7 @@ fn parse_message() {
     assert_eq!(SExpression::parse(&mut state), Ok(parsed));
 
     let input = br#"(aaa (bbb "c\"\\d" eee) fff)"#;
-    let mut state = ParserState {
-        buffer: &input[..],
-        cursor: 0,
-    };
+    let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![
         Element::Atom(Atom::new("aaa".to_owned())),
         Element::SExpression(SExpression(vec![
