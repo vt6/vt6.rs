@@ -138,11 +138,13 @@ fn isspace(c: u8) -> bool {
 
 fn parse_bareword(state: &mut ParserState) -> ParseResult<Atom> {
     //This expects the cursor to point to the first char of a bareword atom.
-    match state.buffer[state.cursor] {
+    match state.current()? {
         c if isbareword(c) => {
-            //parse bareword
+            //parse bareword (`c` is added to the front of the vector explicitly because
+            //take_while() will start by calling next() and therefore see the 2nd char of the
+            //bareword and beyond)
             let mut bareword = vec![c];
-            bareword.extend(state.take_while(|c| isbareword(*c)));
+            bareword.extend(state.take_while(|ch| isbareword(*ch)));
             Ok(Atom::new(String::from_utf8_lossy(&bareword).into_owned()))
         },
         _ => state.error(ParseErrorKind::InvalidToken),
@@ -206,7 +208,7 @@ pub fn parse_sexp(state: &mut ParserState) -> ParseResult<SExpression> {
             b')' => {
                 //consume closing paren
                 state.cursor += 1;
-                break;
+                return Ok(SExpression(elements));
             },
             b'"' => { elements.push(Element::Atom(parse_quoted_string(state)?)); },
             //skip over whitespace between elements
@@ -215,6 +217,4 @@ pub fn parse_sexp(state: &mut ParserState) -> ParseResult<SExpression> {
             _ => return state.error(ParseErrorKind::InvalidToken),
         }
     }
-
-    Ok(SExpression(elements))
 }
