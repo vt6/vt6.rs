@@ -34,6 +34,7 @@ use core::msg::sexp::{Element, SExpression};
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub enum ParseErrorKind {
     UnexpectedEOF,
+    InvalidUTF8,
     InvalidToken,
     InvalidWithinBareword,
     UnknownEscapeSequence,
@@ -44,6 +45,7 @@ impl ParseErrorKind {
     pub fn to_str(&self) -> &'static str {
         match *self {
             ParseErrorKind::UnexpectedEOF => "unexpected EOF",
+            ParseErrorKind::InvalidUTF8 => "invalid UTF-8",
             ParseErrorKind::InvalidToken => "unexpected character at start of token",
             ParseErrorKind::InvalidWithinBareword => "unexpected character within bareword",
             ParseErrorKind::UnknownEscapeSequence => "unknown escape sequence",
@@ -149,23 +151,26 @@ fn parse_bareword(state: &mut ParserState) -> ParseResult<Atom> {
 
 fn parse_quoted_string(state: &mut ParserState) -> ParseResult<Atom> {
     //This expects `input.current` to point to the opening quote of a quoted string.
-    let mut s: Vec<u8> = vec![];
+    let mut string_buffer: Vec<u8> = vec![];
     loop {
         match state.advance()? {
             b'"' => break,
             b'\\' => {
                 let c = state.advance()?;
                 if c == b'\\' || c == b'"' {
-                    s.push(c);
+                    string_buffer.push(c);
                 } else {
                     return state.error(ParseErrorKind::UnknownEscapeSequence);
                 };
             },
-            c => s.push(c),
+            c => string_buffer.push(c),
         }
     }
     state.cursor += 1;
-    Ok(Atom::new(String::from_utf8_lossy(&s).into_owned()))
+    match String::from_utf8(string_buffer) {
+        Ok(s) => Ok(Atom::new(s)),
+        Err(_) => state.error(ParseErrorKind::InvalidUTF8),
+    }
 }
 
 pub fn parse_atom(state: &mut ParserState) -> ParseResult<Atom> {
