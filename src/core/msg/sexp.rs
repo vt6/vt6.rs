@@ -70,7 +70,7 @@ impl SExpression {
     ///Parses an s-expression. Before the call, `state.cursor` must point to its opening
     ///parenthesis, or whitespace before it. After the call, `state.cursor` will point to the
     ///position directly following its closing parenthesis.
-    pub fn parse<'a>(mut state: &'a mut parse::ParserState) -> parse::ParseResult<SExpression> {
-        parse::parse_sexp(&mut state)
+    pub fn parse<'a>(state: &'a mut parse::ParserState) -> parse::ParseResult<SExpression> {
+        parse::parse_sexp(state)
     }
 }
