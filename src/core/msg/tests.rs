@@ -19,19 +19,25 @@
 use core::msg::{Atom, Element, ParserState, SExpression};
 
 #[test]
-fn parse_message() {
+fn parse_sexp_empty_sexp() {
     let input = b"()";
     let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![]);
     assert_eq!(SExpression::parse(&mut state), Ok(parsed));
+}
 
+#[test]
+fn parse_sexp_atom() {
     let input = br#"(aaa)"#;
     let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![
         Element::Atom(Atom::new("aaa".to_owned())),
     ]);
     assert_eq!(SExpression::parse(&mut state), Ok(parsed));
+}
 
+#[test]
+fn parse_sexp_atom_and_sexp() {
     let input = br#"(aaa (bbb) fff)"#;
     let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![
@@ -42,7 +48,10 @@ fn parse_message() {
         Element::Atom(Atom::new("fff".to_owned())),
     ]);
     assert_eq!(SExpression::parse(&mut state), Ok(parsed));
+}
 
+#[test]
+fn parse_sexp_quoted() {
     let input = br#"(aaa (bbb "c\"\\d" eee) fff)"#;
     let mut state = ParserState::new(&input[..]);
     let parsed = SExpression(vec![
