@@ -129,8 +129,10 @@ impl<'a> ParserState<'a> {
 ////////////////////////////////////////////////////////////////////////////
 //parsing functions
 
-fn isbareword(c: u8) -> bool {
-    (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z') || c == b'.' || c == b'-' || c == b'_'
+//This is exported for internal use by vt6::core::msg::atom. Note that the
+//module as a whole is private, so this does not end up in the public API.
+pub fn isbareword(c: u8) -> bool {
+    (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z') || (c >= b'0' && c <= b'9') || c == b'.' || c == b'-' || c == b'_'
 }
 fn isspace(c: u8) -> bool {
     c == b' ' || (c >= 9 && c <= 13)
@@ -145,7 +147,8 @@ fn parse_bareword(state: &mut ParserState) -> ParseResult<Atom> {
             //bareword and beyond)
             let mut bareword = vec![c];
             bareword.extend(state.take_while(|ch| isbareword(*ch)));
-            Ok(Atom::new(String::from_utf8_lossy(&bareword).into_owned()))
+            let value = String::from_utf8_lossy(&bareword).into_owned();
+            Ok(Atom { value: value, was_quoted: false })
         },
         _ => state.error(ParseErrorKind::InvalidToken),
     }
@@ -162,6 +165,7 @@ fn parse_quoted_string(state: &mut ParserState) -> ParseResult<Atom> {
                 if c == b'\\' || c == b'"' {
                     string_buffer.push(c);
                 } else {
+                    state.cursor -= 1; //report error where escape sequence started
                     return state.error(ParseErrorKind::UnknownEscapeSequence);
                 };
             },
@@ -170,7 +174,7 @@ fn parse_quoted_string(state: &mut ParserState) -> ParseResult<Atom> {
     }
     state.cursor += 1;
     match String::from_utf8(string_buffer) {
-        Ok(s) => Ok(Atom::new(s)),
+        Ok(s) => Ok(Atom { value: s, was_quoted: true }),
         Err(_) => state.error(ParseErrorKind::InvalidUTF8),
     }
 }
