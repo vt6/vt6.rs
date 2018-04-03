@@ -20,7 +20,6 @@ use std::fmt;
 use std::fmt::Write;
 
 use core::msg::atom::Atom;
-use core::msg::parse;
 
 ///This enum represents an element of an s-expression, as defined in
 ///[vt6/core1.0, section 2.1](https://vt6.io/std/core/1.0/#section-2-1).
@@ -47,6 +46,8 @@ impl fmt::Display for Element {
 ///
 ///An s-expression can be converted into its encoding inside a VT6 message with `format!("{}",
 ///&sexp)`.
+///
+///To parse an s-expression, use the methods provided by the Parse trait.
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub struct SExpression(pub Vec<Element>);
 
@@ -63,14 +64,5 @@ impl fmt::Display for SExpression {
             }
             f.write_char(')')
         }
-    }
-}
-
-impl SExpression {
-    ///Parses an s-expression. Before the call, `state.cursor` must point to its opening
-    ///parenthesis, or whitespace before it. After the call, `state.cursor` will point to the
-    ///position directly following its closing parenthesis.
-    pub fn parse<'a>(state: &'a mut parse::ParserState) -> parse::ParseResult<SExpression> {
-        parse::parse_sexp(state)
     }
 }
