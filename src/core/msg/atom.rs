@@ -26,9 +26,6 @@ use core::msg::parse;
 ///
 ///An atom can be converted into its most compact encoding inside a VT6 message
 ///with `format!("{}", &atom)`.
-///
-///Instances behave like String instances, e.g. `&atom` is equivalent to
-///`atom.value` and equality is defined as `self.value == other.value`.
 #[derive(Clone,Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub struct Atom {
     ///The string value represented by this atom.
@@ -39,12 +36,6 @@ pub struct Atom {
     ///types and arguments in the `want` and `have` messages must be encoded as
     ///barewords.)
     pub was_quoted: bool,
-}
-
-impl AsRef<str> for Atom {
-    fn as_ref(&self) -> &str {
-        self.value.as_ref()
-    }
 }
 
 impl PartialEq<str> for Atom {
