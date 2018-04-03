@@ -18,40 +18,31 @@
 
 use core::msg::*;
 
-fn parse_atom(input: &[u8]) -> ParseResult<Atom> {
-    let mut state = ParserState::new(&input[..]);
-    Atom::parse(&mut state)
-}
-fn parse_sexp(input: &[u8]) -> ParseResult<SExpression> {
-    let mut state = ParserState::new(&input[..]);
-    SExpression::parse(&mut state)
-}
-
 #[test]
 fn parse_barewords() {
-    assert_eq!(parse_atom(b"core.set"),
+    assert_eq!(Atom::parse_byte_string(b"core.set"),
         Ok(Atom { value: String::from("core.set"), was_quoted: false }),
     );
-    assert_eq!(parse_atom(b"42x"),
+    assert_eq!(Atom::parse_byte_string(b"42x"),
         Ok(Atom { value: String::from("42x"), was_quoted: false }),
     );
-    assert_eq!(parse_atom(b"?set"),
+    assert_eq!(Atom::parse_byte_string(b"?set"),
         Err(ParseError { kind: ParseErrorKind::InvalidToken, offset: 0 }),
     );
 }
 
 #[test]
 fn parse_quoted_strings() {
-    assert_eq!(parse_atom(b"\"core.set\""),
+    assert_eq!(Atom::parse_byte_string(b"\"core.set\""),
         Ok(Atom { value: String::from("core.set"), was_quoted: true }),
     );
-    assert_eq!(parse_atom(br#""42\\x""#),
+    assert_eq!(Atom::parse_byte_string(br#""42\\x""#),
         Ok(Atom { value: String::from("42\\x"), was_quoted: true }),
     );
-    assert_eq!(parse_atom(br#""?set""#),
+    assert_eq!(Atom::parse_byte_string(br#""?set""#),
         Ok(Atom { value: String::from("?set"), was_quoted: true }),
     );
-    assert_eq!(parse_atom(br#""foo\nbar""#),
+    assert_eq!(Atom::parse_byte_string(br#""foo\nbar""#),
         Err(ParseError { kind: ParseErrorKind::UnknownEscapeSequence, offset: 4 }),
     );
 }
@@ -63,15 +54,15 @@ fn make_atom(was_quoted: bool, value: &'static str) -> Atom {
 
 #[test]
 fn parse_sexpressions() {
-    assert_eq!(parse_sexp(b"()"),
+    assert_eq!(SExpression::parse_byte_string(b"()"),
         Ok(SExpression(vec![])),
     );
-    assert_eq!(parse_sexp(br#"(aaa)"#),
+    assert_eq!(SExpression::parse_byte_string(br#"(aaa)"#),
         Ok(SExpression(vec![
             Element::Atom(make_atom(false, "aaa")),
         ])),
     );
-    assert_eq!(parse_sexp(br#"(aaa (bbb) fff)"#),
+    assert_eq!(SExpression::parse_byte_string(br#"(aaa (bbb) fff)"#),
         Ok(SExpression(vec![
             Element::Atom(make_atom(false, "aaa")),
             Element::SExpression(SExpression(vec![
@@ -80,7 +71,7 @@ fn parse_sexpressions() {
             Element::Atom(make_atom(false, "fff")),
         ])),
     );
-    assert_eq!(parse_sexp(br#"(aaa (bbb "c\"\\d" eee) fff)"#),
+    assert_eq!(SExpression::parse_byte_string(br#"(aaa (bbb "c\"\\d" eee) fff)"#),
         Ok(SExpression(vec![
             Element::Atom(make_atom(false, "aaa")),
             Element::SExpression(SExpression(vec![
