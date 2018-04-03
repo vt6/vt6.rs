@@ -185,13 +185,16 @@ fn parse_bareword(state: &mut ParserState) -> ParseResult<Atom> {
             let value = String::from_utf8_lossy(&bareword).into_owned();
             Ok(Atom { value: value, was_quoted: false })
         },
+        //This match arm is only defense in depth; all callers already check that
+        //isbareword(state.current().unwrap()).
         _ => state.error(ParseErrorKind::InvalidToken),
     }
 }
 
 fn parse_quoted_string(state: &mut ParserState) -> ParseResult<Atom> {
-    //This expects `input.current` to point to the opening quote of a quoted string.
+    //This expects `state.cursor` to point to the opening quote of a quoted string.
     let mut string_buffer: Vec<u8> = vec![];
+    let offset = state.cursor + 1;
     loop {
         match state.advance()? {
             b'"' => break,
@@ -210,7 +213,10 @@ fn parse_quoted_string(state: &mut ParserState) -> ParseResult<Atom> {
     state.cursor += 1;
     match String::from_utf8(string_buffer) {
         Ok(s) => Ok(Atom { value: s, was_quoted: true }),
-        Err(_) => state.error(ParseErrorKind::InvalidUTF8),
+        Err(e) => Err(ParseError {
+            offset: offset + e.utf8_error().valid_up_to(),
+            kind:   ParseErrorKind::InvalidUTF8,
+        }),
     }
 }
 

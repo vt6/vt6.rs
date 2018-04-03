@@ -23,6 +23,12 @@ fn parse_barewords() {
     assert_eq!(Atom::parse_byte_string(b"core.set"),
         Ok(Atom { value: String::from("core.set"), was_quoted: false }),
     );
+    assert_eq!(Atom::parse_byte_string(b" \tcore.set"),
+        Ok(Atom { value: String::from("core.set"), was_quoted: false }),
+    );
+    assert_eq!(Atom::parse_byte_string(b" \tcore.set\t "),
+        Err(ParseError { kind: ParseErrorKind::ExpectedEOF, offset: 10 }),
+    );
     assert_eq!(Atom::parse_byte_string(b"42x"),
         Ok(Atom { value: String::from("42x"), was_quoted: false }),
     );
@@ -35,6 +41,12 @@ fn parse_barewords() {
 fn parse_quoted_strings() {
     assert_eq!(Atom::parse_byte_string(b"\"core.set\""),
         Ok(Atom { value: String::from("core.set"), was_quoted: true }),
+    );
+    assert_eq!(Atom::parse_byte_string(b" \t\"core.set\""),
+        Ok(Atom { value: String::from("core.set"), was_quoted: true }),
+    );
+    assert_eq!(Atom::parse_byte_string(b" \t\"core.set\"\t "),
+        Err(ParseError { kind: ParseErrorKind::ExpectedEOF, offset: 12 }),
     );
     assert_eq!(Atom::parse_byte_string(br#""42\\x""#),
         Ok(Atom { value: String::from("42\\x"), was_quoted: true }),
@@ -50,6 +62,16 @@ fn parse_quoted_strings() {
 //A shorthand to make the literals down below more compact.
 fn make_atom(was_quoted: bool, value: &'static str) -> Atom {
     Atom { was_quoted: was_quoted, value: String::from(value) }
+}
+
+#[test]
+fn atom_behavior() {
+    let a1 = make_atom(false, "abc");
+    let a2 = make_atom(true, "abc");
+    assert_eq!(&a1, "abc");
+    assert_eq!(&a2, "abc");
+    assert_eq!("abc", &a1);
+    assert_eq!("abc", &a2);
 }
 
 #[test]
@@ -91,4 +113,28 @@ fn serialize_message() {
         Element::Atom(Atom::new(String::from(r#"a"\"b"#))),
     ]);
     assert_eq!(format!("{}", msg), r#"(test "a\"\\\"b")"#);
+}
+
+fn parse_sexp_get_error_msg(input: &[u8]) -> String {
+    format!("{}", SExpression::parse_byte_string(input).unwrap_err())
+}
+
+#[test]
+fn check_error_messages() {
+    assert_eq!(
+        parse_sexp_get_error_msg(b"(foo (bar"),
+        "Parse error at offset 9: unexpected EOF",
+    );
+    assert_eq!(
+        parse_sexp_get_error_msg(b"(foo \"aaa\x80bbb\")"),
+        "Parse error at offset 9: invalid UTF-8",
+    );
+    assert_eq!(
+        parse_sexp_get_error_msg(b"(foo [bar])"),
+        "Parse error at offset 5: unexpected character at start of token",
+    );
+    assert_eq!(
+        parse_sexp_get_error_msg(b"(foo \"bar\\nbaz\")"),
+        "Parse error at offset 9: unknown escape sequence",
+    );
 }
