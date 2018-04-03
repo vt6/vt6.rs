@@ -22,6 +22,10 @@ fn parse_atom(input: &[u8]) -> ParseResult<Atom> {
     let mut state = ParserState::new(&input[..]);
     Atom::parse(&mut state)
 }
+fn parse_sexp(input: &[u8]) -> ParseResult<SExpression> {
+    let mut state = ParserState::new(&input[..]);
+    SExpression::parse(&mut state)
+}
 
 #[test]
 fn parse_barewords() {
@@ -58,51 +62,35 @@ fn make_atom(was_quoted: bool, value: &'static str) -> Atom {
 }
 
 #[test]
-fn parse_sexp_empty_sexp() {
-    let input = b"()";
-    let mut state = ParserState::new(&input[..]);
-    let parsed = SExpression(vec![]);
-    assert_eq!(SExpression::parse(&mut state), Ok(parsed));
-}
-
-#[test]
-fn parse_sexp_atom() {
-    let input = br#"(aaa)"#;
-    let mut state = ParserState::new(&input[..]);
-    let parsed = SExpression(vec![
-        Element::Atom(make_atom(false, "aaa")),
-    ]);
-    assert_eq!(SExpression::parse(&mut state), Ok(parsed));
-}
-
-#[test]
-fn parse_sexp_atom_and_sexp() {
-    let input = br#"(aaa (bbb) fff)"#;
-    let mut state = ParserState::new(&input[..]);
-    let parsed = SExpression(vec![
-        Element::Atom(make_atom(false, "aaa")),
-        Element::SExpression(SExpression(vec![
-            Element::Atom(make_atom(false, "bbb")),
+fn parse_sexpressions() {
+    assert_eq!(parse_sexp(b"()"),
+        Ok(SExpression(vec![])),
+    );
+    assert_eq!(parse_sexp(br#"(aaa)"#),
+        Ok(SExpression(vec![
+            Element::Atom(make_atom(false, "aaa")),
         ])),
-        Element::Atom(make_atom(false, "fff")),
-    ]);
-    assert_eq!(SExpression::parse(&mut state), Ok(parsed));
-}
-
-#[test]
-fn parse_sexp_quoted() {
-    let input = br#"(aaa (bbb "c\"\\d" eee) fff)"#;
-    let mut state = ParserState::new(&input[..]);
-    let parsed = SExpression(vec![
-        Element::Atom(make_atom(false, "aaa")),
-        Element::SExpression(SExpression(vec![
-            Element::Atom(make_atom(false, "bbb")),
-            Element::Atom(make_atom(true, "c\"\\d")),
-            Element::Atom(make_atom(false, "eee")),
+    );
+    assert_eq!(parse_sexp(br#"(aaa (bbb) fff)"#),
+        Ok(SExpression(vec![
+            Element::Atom(make_atom(false, "aaa")),
+            Element::SExpression(SExpression(vec![
+                Element::Atom(make_atom(false, "bbb")),
+            ])),
+            Element::Atom(make_atom(false, "fff")),
         ])),
-        Element::Atom(make_atom(false, "fff")),
-    ]);
-    assert_eq!(SExpression::parse(&mut state), Ok(parsed));
+    );
+    assert_eq!(parse_sexp(br#"(aaa (bbb "c\"\\d" eee) fff)"#),
+        Ok(SExpression(vec![
+            Element::Atom(make_atom(false, "aaa")),
+            Element::SExpression(SExpression(vec![
+                Element::Atom(make_atom(false, "bbb")),
+                Element::Atom(make_atom(true, "c\"\\d")),
+                Element::Atom(make_atom(false, "eee")),
+            ])),
+            Element::Atom(make_atom(false, "fff")),
+        ])),
+    );
 }
 
 #[test]
