@@ -46,6 +46,12 @@ pub enum ParseErrorKind {
     InvalidToken,
     ///While parsing a quoted string, an unknown escape sequence was encountered.
     UnknownEscapeSequence,
+    ///A message was encountered that has no elements, not even a message type. This is only
+    ///returned by Message::parse() or Message::from().
+    EmptyMessage,
+    ///A message was encountered whose first argument is not a valid message type. This is only
+    ///returned by Message::parse() or Message::from().
+    InvalidMessageType,
 }
 
 impl ParseErrorKind {
@@ -57,6 +63,8 @@ impl ParseErrorKind {
             ParseErrorKind::InvalidUTF8 => "invalid UTF-8",
             ParseErrorKind::InvalidToken => "unexpected character at start of token",
             ParseErrorKind::UnknownEscapeSequence => "unknown escape sequence",
+            ParseErrorKind::EmptyMessage => "missing message type",
+            ParseErrorKind::InvalidMessageType => "invalid message type",
         }
     }
 }

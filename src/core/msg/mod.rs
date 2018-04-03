@@ -16,11 +16,13 @@
 ******************************************************************************/
 
 mod atom;
+mod message;
 mod parse;
 mod sexp;
 #[cfg(test)]
 mod tests;
 
 pub use core::msg::atom::Atom;
+pub use core::msg::message::Message;
 pub use core::msg::sexp::{Element, SExpression};
 pub use core::msg::parse::{Parse, ParserState, ParseError, ParseErrorKind, ParseResult};

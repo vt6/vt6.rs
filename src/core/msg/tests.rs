@@ -108,15 +108,18 @@ fn parse_sexpressions() {
 
 #[test]
 fn serialize_message() {
-    let msg = SExpression(vec![
-        Element::Atom(Atom::new(String::from("test"))),
+    let msg = Message(SExpression(vec![
+        Element::Atom(Atom::new(String::from("core1.test"))),
         Element::Atom(Atom::new(String::from(r#"a"\"b"#))),
-    ]);
-    assert_eq!(format!("{}", msg), r#"(test "a\"\\\"b")"#);
+    ]));
+    assert_eq!(format!("{}", msg), r#"(core1.test "a\"\\\"b")"#);
 }
 
 fn parse_sexp_get_error_msg(input: &[u8]) -> String {
     format!("{}", SExpression::parse_byte_string(input).unwrap_err())
+}
+fn parse_message_get_error_msg(input: &[u8]) -> String {
+    format!("{}", Message::parse_byte_string(input).unwrap_err())
 }
 
 #[test]
@@ -136,5 +139,21 @@ fn check_error_messages() {
     assert_eq!(
         parse_sexp_get_error_msg(b"(foo \"bar\\nbaz\")"),
         "Parse error at offset 9: unknown escape sequence",
+    );
+    assert_eq!(
+        parse_message_get_error_msg(b"(foo bar)"),
+        "Parse error at offset 0: invalid message type",
+    );
+    assert_eq!(
+        parse_message_get_error_msg(b"((want core1) core2)"),
+        "Parse error at offset 0: invalid message type",
+    );
+    assert_eq!(
+        parse_message_get_error_msg(b"()"),
+        "Parse error at offset 0: missing message type",
+    );
+    assert_eq!(
+        parse_message_get_error_msg(b"(want core1)(something else)"),
+        "Parse error at offset 12: expected EOF",
     );
 }
