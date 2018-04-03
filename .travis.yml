@@ -18,6 +18,7 @@ matrix:
     - rust: nightly
 
 script:
+  - git clone https://github.com/vt6/conformance-tests ../conformance-tests
   - cargo clean
   - cargo build
   - cargo test

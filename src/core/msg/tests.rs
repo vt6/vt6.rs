@@ -16,6 +16,12 @@
 *
 ******************************************************************************/
 
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufReader, BufRead};
+
+use regex::Regex;
+
 use core::msg::*;
 
 #[test]
@@ -156,4 +162,74 @@ fn check_error_messages() {
         parse_message_get_error_msg(b"(want core1)(something else)"),
         "Parse error at offset 12: expected EOF",
     );
+}
+
+#[test]
+fn conformance_test_parse_sexp() {
+    let file = File::open("../conformance-tests/core/parse-sexp.txt").unwrap();
+    let mut current_input = String::from("");
+    let mut current_sexp: ParseResult<SExpression> = Ok(SExpression(Vec::new()));
+
+    let test_rx = Regex::new(r"^test\s*(.+)$").unwrap();
+    let ok_rx = Regex::new(r"^ok\s*(.+)$").unwrap();
+    let error_rx = Regex::new(r"^error\s*(\d+)\s*(.+)$").unwrap();
+
+    let error_map = {
+        let mut m = HashMap::new();
+        m.insert("expected EOF", ParseErrorKind::ExpectedEOF);
+        m.insert("invalid escape sequence", ParseErrorKind::UnknownEscapeSequence);
+        m.insert("invalid start of atom", ParseErrorKind::InvalidToken);
+        m.insert("invalid start of S-expression", ParseErrorKind::InvalidToken);
+        m.insert("invalid UTF-8", ParseErrorKind::InvalidUTF8);
+        m.insert("unexpected EOF in quoted string", ParseErrorKind::UnexpectedEOF);
+        m.insert("unexpected EOF in S-expression", ParseErrorKind::UnexpectedEOF);
+        m
+    };
+
+    for (idx, line) in BufReader::new(file).lines().enumerate() {
+        let line = line.unwrap();
+        if line.starts_with("#") {
+            continue;
+        }
+        if let Some(caps) = test_rx.captures(&line) {
+            let input = unescape_str(&caps[1]);
+            current_input = String::from_utf8_lossy(&input).into();
+            current_sexp = SExpression::parse_byte_string(&input);
+        } else if let Some(caps) = ok_rx.captures(&line) {
+            let sexp_str = String::from_utf8(unescape_str(&caps[1])).unwrap();
+            assert_eq!(
+                current_sexp.as_ref().map(serialize_sexp), Ok(sexp_str),
+                "\ninput: {:?} at line {}", current_input, idx + 1,
+            );
+        } else if let Some(caps) = error_rx.captures(&line) {
+            assert!(current_sexp.is_err(),
+                "\n input: {:?} at line {}\noutput: {:?}", current_input, idx + 1, current_sexp,
+            );
+            if let Err(ref err) = current_sexp {
+                assert_eq!(err.offset, caps[1].parse().unwrap(),
+                    "\n input: {:?} at line {}\noutput: Err({:?})", current_input, idx + 1, err,
+                );
+                assert_eq!(Some(&err.kind), error_map.get(&caps[2]),
+                    "\n input: {:?} at line {}\noutput: Err({:?})", current_input, idx + 1, err,
+                );
+            }
+        }
+    }
+}
+
+fn unescape_str(input: &str) -> Vec<u8> {
+    let escape_rx = Regex::new(r"\\x([0-9A-F]{2})|(.)").unwrap();
+    let mut result = Vec::with_capacity(input.len());
+    for caps in escape_rx.captures_iter(input) {
+        if let Some(match1) = caps.get(1) {
+            result.push(u8::from_str_radix(match1.as_str(), 16).unwrap());
+        } else {
+            result.extend_from_slice(caps[2].as_bytes());
+        }
+    }
+    result
+}
+
+fn serialize_sexp(input: &SExpression) -> String {
+    format!("{}", input)
 }
