@@ -19,6 +19,8 @@
 use std::fmt;
 use std::fmt::Write;
 
+use regex::Regex;
+
 use core::msg::parse;
 
 ///An atom is either a bareword or a quoted string, as defined in
@@ -27,8 +29,7 @@ use core::msg::parse;
 ///An atom can be converted into its most compact encoding inside a VT6 message
 ///with `format!("{}", &atom)`.
 ///
-///Instances behave like String instances, e.g. `&atom` is equivalent to
-///`atom.value` and equality is defined as `self.value == other.value`.
+///To parse an atom, use the methods provided by the Parse trait.
 #[derive(Clone,Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub struct Atom {
     ///The string value represented by this atom.
@@ -39,12 +40,6 @@ pub struct Atom {
     ///types and arguments in the `want` and `have` messages must be encoded as
     ///barewords.)
     pub was_quoted: bool,
-}
-
-impl AsRef<str> for Atom {
-    fn as_ref(&self) -> &str {
-        self.value.as_ref()
-    }
 }
 
 impl PartialEq<str> for Atom {
@@ -87,11 +82,51 @@ impl Atom {
         Atom{ value: s, was_quoted: false }
     }
 
-    ///Parses a bareword or quoted strings. Before the call, `state.cursor` must point to its first
-    ///character (or, for quoted strings, the opening quote), or whitespace before it. After the
-    ///call, `state.cursor` will point to the position directly following the last character (or,
-    ///for quoted strings, the closing quote).
-    pub fn parse<'a>(mut state: &'a mut parse::ParserState) -> parse::ParseResult<Atom> {
-        parse::parse_atom(&mut state)
+    ///Returns true if this atom is a scoped name, as defined in
+    ///[vt6/core1.0, section 2.2](https://vt6.io/std/core/1.0/#section-2-2).
+    ///
+    ///Scoped names *must* be barewords:
+    ///
+    ///```
+    ///# use vt6::core::msg::*;
+    ///fn atom_from_str(str: &'static str) -> Atom {
+    ///    Atom::parse_byte_string(str.as_bytes()).unwrap()
+    ///}
+    ///
+    ///assert_eq!(atom_from_str("core1.set").is_scoped_name(), true);
+    ///assert_eq!(atom_from_str("not_scoped").is_scoped_name(), false);
+    ///assert_eq!(atom_from_str("want").is_scoped_name(), false);
+    ///assert_eq!(atom_from_str("have").is_scoped_name(), false);
+    ///assert_eq!(atom_from_str("\"core1.set\"").is_scoped_name(), false);
+    ///```
+    pub fn is_scoped_name(&self) -> bool {
+        lazy_static! {
+            //regex matching <scoped-name>
+            static ref SCOPED_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z_-]*(?:0|[1-9][0-9]*)\.[a-zA-Z_][a-zA-Z_-]*$").unwrap();
+        }
+        !self.was_quoted && SCOPED_NAME.is_match(&self.value)
+    }
+
+    ///Returns true if this atom is a message type, as defined in
+    ///[vt6/core1.0, section 2.2](https://vt6.io/std/core/1.0/#section-2-2).
+    ///
+    ///This is similar to is_scoped_name(), but also allows the barewords "want" and "have".
+    ///
+    ///```
+    ///# use vt6::core::msg::*;
+    ///# fn atom_from_str(str: &'static str) -> Atom {
+    ///#     Atom::parse_byte_string(str.as_bytes()).unwrap()
+    ///# }
+    ///assert_eq!(atom_from_str("core1.set").is_message_type(), true);
+    ///assert_eq!(atom_from_str("not_scoped").is_message_type(), false);
+    ///assert_eq!(atom_from_str("want").is_message_type(), true);
+    ///assert_eq!(atom_from_str("have").is_message_type(), true);
+    ///assert_eq!(atom_from_str("\"core1.set\"").is_message_type(), false);
+    ///```
+    pub fn is_message_type(&self) -> bool {
+        if self.was_quoted {
+            return false;
+        }
+        self.value == "want" || self.value == "have" || self.is_scoped_name()
     }
 }

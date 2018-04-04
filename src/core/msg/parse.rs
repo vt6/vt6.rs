@@ -29,26 +29,42 @@ use core::msg::sexp::{Element, SExpression};
 ////////////////////////////////////////////////////////////////////////////////
 // result and error types
 
-///Enumeration of the kinds of errors that can occur in the parsing functions in this module.
+///Enumeration of the kinds of errors that can occur in the methods of the Parse trait.
 ///See `struct ParseError` for details.
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub enum ParseErrorKind {
+    ///The input was not entirely consumed by Parse::parse_byte_string().
+    ///Parse::parse() does not generate this error.
+    ExpectedEOF,
+    ///The end of the string was encountered while looking for the closing
+    ///parenthesis of an s-expression, or the closing quote of a quoted string.
     UnexpectedEOF,
+    ///A byte (sequence) was encountered that is not valid for UTF-8-encoded text.
     InvalidUTF8,
+    ///An unexpected token was encountered, e.g. a closing instead of an opening
+    ///parenthesis.
     InvalidToken,
-    InvalidWithinBareword,
+    ///While parsing a quoted string, an unknown escape sequence was encountered.
     UnknownEscapeSequence,
+    ///A message was encountered that has no elements, not even a message type. This is only
+    ///returned by Message::parse() or Message::from().
+    EmptyMessage,
+    ///A message was encountered whose first argument is not a valid message type. This is only
+    ///returned by Message::parse() or Message::from().
+    InvalidMessageType,
 }
 
 impl ParseErrorKind {
     ///Returns a human-readable name for this kind.
     pub fn to_str(&self) -> &'static str {
         match *self {
+            ParseErrorKind::ExpectedEOF => "expected EOF",
             ParseErrorKind::UnexpectedEOF => "unexpected EOF",
             ParseErrorKind::InvalidUTF8 => "invalid UTF-8",
             ParseErrorKind::InvalidToken => "unexpected character at start of token",
-            ParseErrorKind::InvalidWithinBareword => "unexpected character within bareword",
             ParseErrorKind::UnknownEscapeSequence => "unknown escape sequence",
+            ParseErrorKind::EmptyMessage => "missing message type",
+            ParseErrorKind::InvalidMessageType => "invalid message type",
         }
     }
 }
@@ -59,7 +75,7 @@ impl fmt::Display for ParseErrorKind {
     }
 }
 
-///The error type that is returned by the parsing functions in this module.
+///The error type that is returned by the methods of the Parse trait.
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub struct ParseError {
     ///The position within the original bytestring (the `buffer` attribute of
@@ -129,6 +145,33 @@ impl<'a> ParserState<'a> {
 ////////////////////////////////////////////////////////////////////////////
 //parsing functions
 
+///This trait provides the parsing logic for VT6 messages. It is implemented by
+///the Atom, Message and SExpression types.
+pub trait Parse: Sized {
+    ///Parses a text representation of this type. Before the call,
+    ///`state.cursor` must point to its first character of the text
+    ///representation (e.g. the opening parenthesis for SExpression), or
+    ///whitespace before it. After the call, `state.cursor` will point to the
+    ///position directly following the last character (e.g. the closing
+    ///parenthesis for SExpression).
+    fn parse(state: &mut ParserState) -> ParseResult<Self>;
+
+    ///Parses a text representation of this type from a byte buffer. The parsing
+    ///must consume the entire byte string, or else ParseErrorKind::ExpectedEOF
+    ///is returned.
+    ///
+    ///This method is mostly used as a shortcut for documentation and unit tests.
+    fn parse_byte_string(text: &[u8]) -> ParseResult<Self> {
+        let mut state = ParserState::new(text);
+        let result = Self::parse(&mut state)?;
+        if state.cursor < text.len() {
+            state.error(ParseErrorKind::ExpectedEOF)
+        } else {
+            Ok(result)
+        }
+    }
+}
+
 //This is exported for internal use by vt6::core::msg::atom. Note that the
 //module as a whole is private, so this does not end up in the public API.
 pub fn isbareword(c: u8) -> bool {
@@ -150,13 +193,16 @@ fn parse_bareword(state: &mut ParserState) -> ParseResult<Atom> {
             let value = String::from_utf8_lossy(&bareword).into_owned();
             Ok(Atom { value: value, was_quoted: false })
         },
+        //This match arm is only defense in depth; all callers already check that
+        //isbareword(state.current().unwrap()).
         _ => state.error(ParseErrorKind::InvalidToken),
     }
 }
 
 fn parse_quoted_string(state: &mut ParserState) -> ParseResult<Atom> {
-    //This expects `input.current` to point to the opening quote of a quoted string.
+    //This expects `state.cursor` to point to the opening quote of a quoted string.
     let mut string_buffer: Vec<u8> = vec![];
+    let offset = state.cursor + 1;
     loop {
         match state.advance()? {
             b'"' => break,
@@ -175,50 +221,57 @@ fn parse_quoted_string(state: &mut ParserState) -> ParseResult<Atom> {
     state.cursor += 1;
     match String::from_utf8(string_buffer) {
         Ok(s) => Ok(Atom { value: s, was_quoted: true }),
-        Err(_) => state.error(ParseErrorKind::InvalidUTF8),
+        Err(e) => Err(ParseError {
+            offset: offset + e.utf8_error().valid_up_to(),
+            kind:   ParseErrorKind::InvalidUTF8,
+        }),
     }
 }
 
-pub fn parse_atom(state: &mut ParserState) -> ParseResult<Atom> {
-    match state.current()? {
-        b'"' => parse_quoted_string(state),
-        c if isbareword(c) => parse_bareword(state),
-        c if isspace(c) => {
-            //consume leading whitespace
-            state.cursor += 1;
-            return parse_atom(state);
-        },
-        _ => return state.error(ParseErrorKind::InvalidToken),
-    }
-}
-
-pub fn parse_sexp(state: &mut ParserState) -> ParseResult<SExpression> {
-    match state.current()? {
-        c if isspace(c) => {
-            //consume leading whitespace
-            state.cursor += 1;
-            return parse_sexp(state);
-        },
-        b'(' => {},
-        _ => return state.error(ParseErrorKind::InvalidToken),
-    }
-    //consume opening paren
-    state.cursor += 1;
-
-    let mut elements: Vec<Element> = vec![];
-    loop {
+impl Parse for Atom {
+    fn parse(state: &mut ParserState) -> ParseResult<Atom> {
         match state.current()? {
-            b'(' => { elements.push(Element::SExpression(parse_sexp(state)?)); },
-            b')' => {
-                //consume closing paren
+            b'"' => parse_quoted_string(state),
+            c if isbareword(c) => parse_bareword(state),
+            c if isspace(c) => {
+                //consume leading whitespace
                 state.cursor += 1;
-                return Ok(SExpression(elements));
+                return Atom::parse(state);
             },
-            b'"' => { elements.push(Element::Atom(parse_quoted_string(state)?)); },
-            //skip over whitespace between elements
-            c if isspace(c) => { state.cursor += 1; },
-            c if isbareword(c) => { elements.push(Element::Atom(parse_bareword(state)?)); },
             _ => return state.error(ParseErrorKind::InvalidToken),
+        }
+    }
+}
+
+impl Parse for SExpression {
+    fn parse(state: &mut ParserState) -> ParseResult<SExpression> {
+        match state.current()? {
+            c if isspace(c) => {
+                //consume leading whitespace
+                state.cursor += 1;
+                return SExpression::parse(state);
+            },
+            b'(' => {},
+            _ => return state.error(ParseErrorKind::InvalidToken),
+        }
+        //consume opening paren
+        state.cursor += 1;
+
+        let mut elements: Vec<Element> = vec![];
+        loop {
+            match state.current()? {
+                b'(' => { elements.push(Element::SExpression(SExpression::parse(state)?)); },
+                b')' => {
+                    //consume closing paren
+                    state.cursor += 1;
+                    return Ok(SExpression(elements));
+                },
+                b'"' => { elements.push(Element::Atom(parse_quoted_string(state)?)); },
+                //skip over whitespace between elements
+                c if isspace(c) => { state.cursor += 1; },
+                c if isbareword(c) => { elements.push(Element::Atom(parse_bareword(state)?)); },
+                _ => return state.error(ParseErrorKind::InvalidToken),
+            }
         }
     }
 }
