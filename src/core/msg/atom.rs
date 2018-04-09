@@ -93,16 +93,16 @@ impl Atom {
     ///    Atom::parse_byte_string(str.as_bytes()).unwrap()
     ///}
     ///
-    ///assert_eq!(atom_from_str("core1.set").is_scoped_name(), true);
+    ///assert_eq!(atom_from_str("core.set").is_scoped_name(), true);
     ///assert_eq!(atom_from_str("not_scoped").is_scoped_name(), false);
     ///assert_eq!(atom_from_str("want").is_scoped_name(), false);
     ///assert_eq!(atom_from_str("have").is_scoped_name(), false);
-    ///assert_eq!(atom_from_str("\"core1.set\"").is_scoped_name(), false);
+    ///assert_eq!(atom_from_str("\"core.set\"").is_scoped_name(), false);
     ///```
     pub fn is_scoped_name(&self) -> bool {
         lazy_static! {
             //regex matching <scoped-name>
-            static ref SCOPED_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z_-]*(?:0|[1-9][0-9]*)\.[a-zA-Z_][a-zA-Z_-]*$").unwrap();
+            static ref SCOPED_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z_-]*\.[a-zA-Z_][a-zA-Z_-]*$").unwrap();
         }
         !self.was_quoted && SCOPED_NAME.is_match(&self.value)
     }
@@ -117,11 +117,11 @@ impl Atom {
     ///# fn atom_from_str(str: &'static str) -> Atom {
     ///#     Atom::parse_byte_string(str.as_bytes()).unwrap()
     ///# }
-    ///assert_eq!(atom_from_str("core1.set").is_message_type(), true);
+    ///assert_eq!(atom_from_str("core.set").is_message_type(), true);
     ///assert_eq!(atom_from_str("not_scoped").is_message_type(), false);
     ///assert_eq!(atom_from_str("want").is_message_type(), true);
     ///assert_eq!(atom_from_str("have").is_message_type(), true);
-    ///assert_eq!(atom_from_str("\"core1.set\"").is_message_type(), false);
+    ///assert_eq!(atom_from_str("\"core.set\"").is_message_type(), false);
     ///```
     pub fn is_message_type(&self) -> bool {
         if self.was_quoted {
