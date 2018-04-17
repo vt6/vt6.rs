@@ -97,6 +97,7 @@ impl Atom {
     ///assert_eq!(atom_from_str("not_scoped").is_scoped_name(), false);
     ///assert_eq!(atom_from_str("want").is_scoped_name(), false);
     ///assert_eq!(atom_from_str("have").is_scoped_name(), false);
+    ///assert_eq!(atom_from_str("nope").is_scoped_name(), false);
     ///assert_eq!(atom_from_str("\"core.set\"").is_scoped_name(), false);
     ///```
     pub fn is_scoped_name(&self) -> bool {
@@ -121,12 +122,13 @@ impl Atom {
     ///assert_eq!(atom_from_str("not_scoped").is_message_type(), false);
     ///assert_eq!(atom_from_str("want").is_message_type(), true);
     ///assert_eq!(atom_from_str("have").is_message_type(), true);
+    ///assert_eq!(atom_from_str("nope").is_message_type(), true);
     ///assert_eq!(atom_from_str("\"core.set\"").is_message_type(), false);
     ///```
     pub fn is_message_type(&self) -> bool {
         if self.was_quoted {
             return false;
         }
-        self.value == "want" || self.value == "have" || self.is_scoped_name()
+        self.value == "want" || self.value == "have" || self.value == "nope" || self.is_scoped_name()
     }
 }
