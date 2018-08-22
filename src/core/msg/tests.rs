@@ -96,6 +96,21 @@ fn expect_parse_incomplete(input: &[u8]) {
 }
 
 #[test]
+fn test_message_fmt_debug_display() {
+    let (msg, _) = Message::parse(b"{4|4:want,4:core,1:1,1:2,}").unwrap();
+    assert_eq!(format!("{}", msg), "(want core 1 2)");
+    assert_eq!(format!("{:?}", msg), r#"Message { type_name: "want", arguments: <3 items> }"#);
+
+    let (msg, _) = Message::parse(b"{1|9:sig.claim,}").unwrap();
+    assert_eq!(format!("{}", msg), "(sig.claim)");
+    assert_eq!(format!("{:?}", msg), r#"Message { type_name: "sig.claim", arguments: <0 items> }"#);
+
+    let (msg, _) = Message::parse(b"{3|8:core.set,13:example.bytes,5:\xA0a\"a\xC3,}").unwrap();
+    assert_eq!(format!("{}", msg), r#"(core.set example.bytes "\xa0a\"a\xc3")"#);
+    assert_eq!(format!("{:?}", msg), r#"Message { type_name: "core.set", arguments: <2 items> }"#);
+}
+
+#[test]
 fn test_message_formatting() {
     let mut buf = vec![0; 4096];
     let required_size = make_example_message(&mut buf).unwrap();

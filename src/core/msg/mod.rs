@@ -390,15 +390,25 @@ impl<'s> Message<'s> {
 
 impl<'s> fmt::Debug for Message<'s> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Message {{ type_name: \"{}.{}\", arguments: <{} items> }}",
-            self.type_name.0, self.type_name.1, self.arguments.len(),
-        )
+        if self.type_name.0 == "" {
+            write!(f, "Message {{ type_name: \"{}\", arguments: <{} items> }}",
+                self.type_name.1, self.arguments.len(),
+            )
+        } else {
+            write!(f, "Message {{ type_name: \"{}.{}\", arguments: <{} items> }}",
+                self.type_name.0, self.type_name.1, self.arguments.len(),
+            )
+        }
     }
 }
 
 impl<'s> fmt::Display for Message<'s> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}.{}", self.type_name.0, self.type_name.1)?;
+        if self.type_name.0 == "" {
+            write!(f, "({}", self.type_name.1)?;
+        } else {
+            write!(f, "({}.{}", self.type_name.0, self.type_name.1)?;
+        }
         for arg in self.arguments.clone() {
             let escaped = arg.iter().any(|&x| char_needs_escaping(x));
             f.write_str(if escaped { " \"" } else { " " })?;
