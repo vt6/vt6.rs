@@ -34,7 +34,7 @@ lazy_static! {
 }
 
 ///Checks if the argument is an identifier, as defined by
-///[vt6/core1.0, section 1.3](https://vt6.io/std/core/1.0/#section-1-3).
+///[vt6/core1.0, section 1.4](https://vt6.io/std/core/1.0/#section-1-4).
 ///
 ///This function can be used to validate module names.
 ///
@@ -51,7 +51,7 @@ pub fn is_identifier(name: &str) -> bool {
 }
 
 ///Checks if the argument is a scoped identifier, as defined by
-///[vt6/core1.0, section 1.3](https://vt6.io/std/core/1.0/#section-1-3).
+///[vt6/core1.0, section 1.4](https://vt6.io/std/core/1.0/#section-1-4).
 ///
 ///If the argument is a scoped identifier, the pair in `Some` contains the part
 ///before the dot (the module name) and the part after the dot (the name inside
@@ -81,7 +81,7 @@ pub fn is_scoped_identifier(name: &str) -> Option<(&str, &str)> {
 }
 
 ///Checks if the argument is a message type, as defined by
-///[vt6/core1.0, section 1.3](https://vt6.io/std/core/1.0/#section-1-3).
+///[vt6/core1.0, section 1.4](https://vt6.io/std/core/1.0/#section-1-4).
 ///
 ///If the argument is a message type, the pair in `Some` contains the part
 ///before the dot (the module name) and the part after the dot (the name inside

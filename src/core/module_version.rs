@@ -21,7 +21,7 @@ use core::EncodeArgument;
 use libcore::fmt;
 
 ///A module version like "2.3", as defined by the `<full-version>` grammar element
-///in [vt6/core1.0, section 1.4](https://vt6.io/std/core/1.0/#section-1-4).
+///in [vt6/core1.0, section 1.5](https://vt6.io/std/core/1.0/#section-1-5).
 #[derive(Clone,Copy,PartialEq,Eq,PartialOrd,Ord,Debug)]
 pub struct ModuleVersion {
     pub major: u16,
