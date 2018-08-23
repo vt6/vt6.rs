@@ -112,7 +112,7 @@ mod tests {
     use libcore::str;
     use libcore::fmt::Display;
 
-    fn check_encodes_like_display<T: EncodeArgument + Display>(val: T) {
+    fn check_encodes_like_display<T: EncodeArgument + Display + ?Sized>(val: &T) {
         let size = val.get_size();
         let mut buf = vec![0u8; size];
         val.encode(&mut buf);
@@ -120,101 +120,112 @@ mod tests {
     }
 
     #[test]
+    fn test_encode_strings() {
+        check_encodes_like_display("abc");
+        check_encodes_like_display("vt\u{1F4AF}=\u{1F4A9}");
+
+        let val = b"abc = \xAA\xBB\xCC or something!";
+        let mut buf = vec![0u8; val.get_size()];
+        val.encode(&mut buf);
+        assert_eq!(buf, val);
+    }
+
+    #[test]
     fn test_encode_unsigned() {
-        check_encodes_like_display(0u8);
-        check_encodes_like_display(42u8);
-        check_encodes_like_display(u8::max_value() - 1);
-        check_encodes_like_display(u8::max_value());
+        check_encodes_like_display(&0u8);
+        check_encodes_like_display(&42u8);
+        check_encodes_like_display(&(u8::max_value() - 1));
+        check_encodes_like_display(&(u8::max_value()));
 
-        check_encodes_like_display(0u16);
-        check_encodes_like_display(42u16);
-        check_encodes_like_display(u16::max_value() - 1);
-        check_encodes_like_display(u16::max_value());
+        check_encodes_like_display(&0u16);
+        check_encodes_like_display(&42u16);
+        check_encodes_like_display(&(u16::max_value() - 1));
+        check_encodes_like_display(&(u16::max_value()));
 
-        check_encodes_like_display(0u32);
-        check_encodes_like_display(42u32);
-        check_encodes_like_display(u32::max_value() - 1);
-        check_encodes_like_display(u32::max_value());
+        check_encodes_like_display(&0u32);
+        check_encodes_like_display(&42u32);
+        check_encodes_like_display(&(u32::max_value() - 1));
+        check_encodes_like_display(&(u32::max_value()));
 
-        check_encodes_like_display(0u64);
-        check_encodes_like_display(42u64);
-        check_encodes_like_display(u64::max_value() - 1);
-        check_encodes_like_display(u64::max_value());
+        check_encodes_like_display(&0u64);
+        check_encodes_like_display(&42u64);
+        check_encodes_like_display(&(u64::max_value() - 1));
+        check_encodes_like_display(&(u64::max_value()));
 
-        check_encodes_like_display(0u128);
-        check_encodes_like_display(42u128);
-        check_encodes_like_display(u128::max_value() - 1);
-        check_encodes_like_display(u128::max_value());
+        check_encodes_like_display(&0u128);
+        check_encodes_like_display(&42u128);
+        check_encodes_like_display(&(u128::max_value() - 1));
+        check_encodes_like_display(&(u128::max_value()));
 
-        check_encodes_like_display(0usize);
-        check_encodes_like_display(42usize);
-        check_encodes_like_display(usize::max_value() - 1);
-        check_encodes_like_display(usize::max_value());
+        check_encodes_like_display(&0usize);
+        check_encodes_like_display(&42usize);
+        check_encodes_like_display(&(usize::max_value() - 1));
+        check_encodes_like_display(&(usize::max_value()));
     }
 
     #[test]
     fn test_encode_signed() {
-        check_encodes_like_display(0i8);
-        check_encodes_like_display(-1i8);
-        check_encodes_like_display(42i8);
-        check_encodes_like_display(-42i8);
-        check_encodes_like_display(i8::min_value());
-        check_encodes_like_display(i8::min_value() + 1);
-        check_encodes_like_display(i8::max_value() - 1);
-        check_encodes_like_display(i8::max_value());
+        check_encodes_like_display(&0i8);
+        check_encodes_like_display(&-1i8);
+        check_encodes_like_display(&42i8);
+        check_encodes_like_display(&-42i8);
+        check_encodes_like_display(&(i8::min_value()));
+        check_encodes_like_display(&(i8::min_value() + 1));
+        check_encodes_like_display(&(i8::max_value() - 1));
+        check_encodes_like_display(&(i8::max_value()));
 
-        check_encodes_like_display(0i16);
-        check_encodes_like_display(-1i16);
-        check_encodes_like_display(42i16);
-        check_encodes_like_display(-42i16);
-        check_encodes_like_display(i16::min_value());
-        check_encodes_like_display(i16::min_value() + 1);
-        check_encodes_like_display(i16::max_value() - 1);
-        check_encodes_like_display(i16::max_value());
+        check_encodes_like_display(&0i16);
+        check_encodes_like_display(&-1i16);
+        check_encodes_like_display(&42i16);
+        check_encodes_like_display(&-42i16);
+        check_encodes_like_display(&(i16::min_value()));
+        check_encodes_like_display(&(i16::min_value() + 1));
+        check_encodes_like_display(&(i16::max_value() - 1));
+        check_encodes_like_display(&(i16::max_value()));
 
-        check_encodes_like_display(0i32);
-        check_encodes_like_display(-1i32);
-        check_encodes_like_display(42i32);
-        check_encodes_like_display(-42i32);
-        check_encodes_like_display(i32::min_value());
-        check_encodes_like_display(i32::min_value() + 1);
-        check_encodes_like_display(i32::max_value() - 1);
-        check_encodes_like_display(i32::max_value());
+        check_encodes_like_display(&0i32);
+        check_encodes_like_display(&-1i32);
+        check_encodes_like_display(&42i32);
+        check_encodes_like_display(&-42i32);
+        check_encodes_like_display(&(i32::min_value()));
+        check_encodes_like_display(&(i32::min_value() + 1));
+        check_encodes_like_display(&(i32::max_value() - 1));
+        check_encodes_like_display(&(i32::max_value()));
 
-        check_encodes_like_display(0i64);
-        check_encodes_like_display(-1i64);
-        check_encodes_like_display(42i64);
-        check_encodes_like_display(-42i64);
-        check_encodes_like_display(i64::min_value());
-        check_encodes_like_display(i64::min_value() + 1);
-        check_encodes_like_display(i64::max_value() - 1);
-        check_encodes_like_display(i64::max_value());
+        check_encodes_like_display(&0i64);
+        check_encodes_like_display(&-1i64);
+        check_encodes_like_display(&42i64);
+        check_encodes_like_display(&-42i64);
+        check_encodes_like_display(&(i64::min_value()));
+        check_encodes_like_display(&(i64::min_value() + 1));
+        check_encodes_like_display(&(i64::max_value() - 1));
+        check_encodes_like_display(&(i64::max_value()));
 
-        check_encodes_like_display(0i128);
-        check_encodes_like_display(-1i128);
-        check_encodes_like_display(42i128);
-        check_encodes_like_display(-42i128);
-        check_encodes_like_display(i128::min_value());
-        check_encodes_like_display(i128::min_value() + 1);
-        check_encodes_like_display(i128::max_value() - 1);
-        check_encodes_like_display(i128::max_value());
+        check_encodes_like_display(&0i128);
+        check_encodes_like_display(&-1i128);
+        check_encodes_like_display(&42i128);
+        check_encodes_like_display(&-42i128);
+        check_encodes_like_display(&(i128::min_value()));
+        check_encodes_like_display(&(i128::min_value() + 1));
+        check_encodes_like_display(&(i128::max_value() - 1));
+        check_encodes_like_display(&(i128::max_value()));
 
-        check_encodes_like_display(0isize);
-        check_encodes_like_display(-1isize);
-        check_encodes_like_display(42isize);
-        check_encodes_like_display(-42isize);
-        check_encodes_like_display(isize::min_value());
-        check_encodes_like_display(isize::min_value() + 1);
-        check_encodes_like_display(isize::max_value() - 1);
-        check_encodes_like_display(isize::max_value());
+        check_encodes_like_display(&0isize);
+        check_encodes_like_display(&-1isize);
+        check_encodes_like_display(&42isize);
+        check_encodes_like_display(&-42isize);
+        check_encodes_like_display(&(isize::min_value()));
+        check_encodes_like_display(&(isize::min_value() + 1));
+        check_encodes_like_display(&(isize::max_value() - 1));
+        check_encodes_like_display(&(isize::max_value()));
     }
 
     #[test]
     fn test_encode_module_version() {
-        check_encodes_like_display(ModuleVersion { major: 1, minor: 0 });
-        check_encodes_like_display(ModuleVersion { major: 23, minor: 42 });
-        check_encodes_like_display(ModuleVersion { major: 1, minor: u16::max_value() });
-        check_encodes_like_display(ModuleVersion { major: u16::max_value() - 1, minor: 2 });
+        check_encodes_like_display(&ModuleVersion { major: 1, minor: 0 });
+        check_encodes_like_display(&ModuleVersion { major: 23, minor: 42 });
+        check_encodes_like_display(&ModuleVersion { major: 1, minor: u16::max_value() });
+        check_encodes_like_display(&ModuleVersion { major: u16::max_value() - 1, minor: 2 });
     }
 
 }
