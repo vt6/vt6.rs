@@ -16,8 +16,7 @@
 *
 ******************************************************************************/
 
-///A trait for types that can be encoded as an argument in
-///a [VT6 message](core/msg/).
+///A trait for types that can be encoded as an argument in a [VT6 message](msg/).
 ///
 ///The trait implementations for strings, byte strings and integers match the
 ///formats defined for basic property types in
@@ -109,7 +108,7 @@ impl_EncodeArgument_for_integer!(isize, usize: u64);
 #[cfg(test)]
 mod tests {
 
-    use core::EncodeArgument;
+    use core::*;
     use libcore::str;
     use libcore::fmt::Display;
 
@@ -208,6 +207,14 @@ mod tests {
         check_encodes_like_display(isize::min_value() + 1);
         check_encodes_like_display(isize::max_value() - 1);
         check_encodes_like_display(isize::max_value());
+    }
+
+    #[test]
+    fn test_encode_module_version() {
+        check_encodes_like_display(ModuleVersion { major: 1, minor: 0 });
+        check_encodes_like_display(ModuleVersion { major: 23, minor: 42 });
+        check_encodes_like_display(ModuleVersion { major: 1, minor: u16::max_value() });
+        check_encodes_like_display(ModuleVersion { major: u16::max_value() - 1, minor: 2 });
     }
 
 }

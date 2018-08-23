@@ -145,8 +145,9 @@ fn test_message_formatting() {
 }
 
 fn make_example_message(buf: &mut [u8]) -> Result<usize, BufferTooSmallError> {
+    use core::ModuleVersion;
     MessageFormatter::format(buf, "have", 2, |f| {
         f.add_argument("core")?;
-        f.add_argument(b"1.0" as &[u8]) //TODO use ModuleVersion
+        f.add_argument(&ModuleVersion { major: 1, minor: 0 })
     })
 }

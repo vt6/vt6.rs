@@ -20,6 +20,8 @@ use regex::Regex;
 
 mod encode_argument;
 pub use self::encode_argument::*;
+mod module_version;
+pub use self::module_version::*;
 
 ///Parsing and serializing of VT6 messages.
 pub mod msg;
