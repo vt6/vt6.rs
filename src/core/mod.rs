@@ -25,6 +25,8 @@ pub use self::module_version::*;
 
 ///Parsing and serializing of VT6 messages.
 pub mod msg;
+///Server-side implementation of the [vt6/core module](https://vt6.io/std/core/).
+pub mod server;
 
 lazy_static! {
     //regex matching <identifier>
