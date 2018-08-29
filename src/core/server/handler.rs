@@ -19,7 +19,7 @@
 use std::marker::PhantomData;
 
 use core::*;
-use server::{self, Connection};
+use server::{self, Connection, HandlerError, try_or_message_invalid};
 
 ///A [handler](../../server/trait.Handler.html) that implements the [vt6/core
 ///module](https://vt6.io/std/core/).
@@ -38,24 +38,25 @@ impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
         Handler { next: next, phantom: PhantomData }
     }
 
-    //This returns Option<()> instead of bool to enable usage of the `?` operator.
-    fn handle_want(&self, msg: &msg::Message, conn: &mut C) -> Option<()> {
+    //The return type is wrapped in Option<...> to enable the use of the `?` operator during
+    //argument parsing. A return value of None means HandlerError::InvalidMessage.
+    fn handle_want(&self, msg: &msg::Message, conn: &mut C) -> Result<(), HandlerError> {
         //validate arguments: first argument is module name
         let mut args_iter = msg.arguments();
         use libcore::str;
-        let module_name = str::from_utf8(args_iter.next()?).ok()?;
+        let module_name = try_or_message_invalid(|| { str::from_utf8(args_iter.next()?).ok() })?;
         if !is_identifier(module_name) {
-            return None;
+            return Err(HandlerError::InvalidMessage);
         }
 
         //validate arguments: remaining arguments are major versions, need at least one
         if args_iter.len() == 0 {
-            return None;
+            return Err(HandlerError::InvalidMessage);
         }
         for arg in args_iter.clone() {
-            let major_version = str::from_utf8(arg).ok()?.parse::<u16>().ok()?;
+            let major_version = try_or_message_invalid(|| { str::from_utf8(arg).ok()?.parse::<u16>().ok() })?;
             if major_version == 0 {
-                return None;
+                return Err(HandlerError::InvalidMessage);
             }
         }
         let major_versions_iter = args_iter.map(|arg| str::from_utf8(arg).unwrap().parse::<u16>().unwrap());
@@ -66,21 +67,19 @@ impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
                 if store {
                     conn.enable_module(module_name, version);
                 }
-                conn.write_to_send_buffer(|buf| {
-                    msg::MessageFormatter::format(buf, "have", 2, |f| {
-                        f.add_argument(module_name)?;
-                        f.add_argument(&version)
-                    }).unwrap_or(0)
-                });
+                conn.with_send_buffer(|buf| {
+                    let mut f = msg::MessageFormatter::new(buf, "have", 2);
+                    f.add_argument(module_name);
+                    f.add_argument(&version);
+                    f.finalize()
+                })
             },
             None => {
-                conn.write_to_send_buffer(|buf| {
-                    msg::MessageFormatter::format(buf, "have", 2, |_| Ok(()))
-                        .unwrap_or(0)
-                });
+                conn.with_send_buffer(|buf| {
+                    msg::MessageFormatter::new(buf, "have", 0).finalize()
+                })
             },
         }
-        Some(())
     }
 
     fn check_want<I: Iterator<Item=u16> + Clone>(&self, module_name: &str, major_versions_iter: I, conn: &C) -> Option<(ModuleVersion, bool)> {
@@ -116,20 +115,20 @@ impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
         }
     }
 
-    fn handle_sub(&self, _msg: &msg::Message, _conn: &mut C) -> bool {
+    fn handle_sub(&self, _msg: &msg::Message, _conn: &mut C) -> Result<(), HandlerError> {
         unimplemented!() //TODO
     }
 
-    fn handle_set(&self, _msg: &msg::Message, _conn: &mut C) -> bool {
+    fn handle_set(&self, _msg: &msg::Message, _conn: &mut C) -> Result<(), HandlerError> {
         unimplemented!() //TODO
     }
 }
 
 impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<C, H> {
-    fn handle(&self, msg: &msg::Message, conn: &mut C) -> bool {
+    fn handle(&self, msg: &msg::Message, conn: &mut C) -> Result<(), HandlerError> {
         let has_core1 = conn.is_module_enabled("core").map_or(false, |version| version.major == 1);
         match msg.type_name() {
-            ("", "want")                 => self.handle_want(msg, conn).is_some(),
+            ("", "want")                 => self.handle_want(msg, conn),
             ("core", "sub") if has_core1 => self.handle_sub(msg, conn),
             ("core", "set") if has_core1 => self.handle_set(msg, conn),
             //forward unrecognized messages to next handler
@@ -139,7 +138,7 @@ impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<C
 }
 
 impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<C, H> {
-    fn handle(&self, msg: &msg::Message, conn: &mut C) -> bool {
+    fn handle(&self, msg: &msg::Message, conn: &mut C) -> Result<(), HandlerError> {
         (self as &server::EarlyHandler<C>).handle(msg, conn)
     }
 

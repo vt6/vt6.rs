@@ -19,6 +19,36 @@
 use core::{msg, EncodeArgument};
 use server::Connection;
 
+///The error type returned by [`Handler::handle()`](trait.Handler.html) and
+///[`EarlyHandler::handle()`](trait.Handler.html).
+#[derive(Clone,Debug,PartialEq,Eq)]
+pub enum HandlerError {
+    ///The message given to `handle()` was invalid. The caller may need to
+    ///answer with an error notification, e.g. a `nope` message.
+    InvalidMessage,
+    ///The handler tried to send a response message, but the connection's send
+    ///buffer was not large enough. The caller should call `handle()` again once
+    ///the send buffer is large enough. The contained `usize` value indicates
+    ///how many bytes could not be written into the target buffer.
+    SendBufferTooSmall(usize),
+}
+
+///Evaluate the given callback and convert a `None` result into
+///[`HandlerError::InvalidMessage`](enum.HandlerError.html). This function is
+///intended for use within [`Handler::handle()`](trait.Handler.html)
+///implementations. When parsing message arguments, parsing code that returns
+///`Result` or `Option` types can be wrapped in this function to enable usage of
+///the `?` operator.
+///
+///TODO: This is a provisional API. When the `try_trait` language feature
+///gets stable, replace this with a `std::convert::From<std::option::NoneError>`
+///implementation on HandlerError.
+///Tracking issue: <https://github.com/rust-lang/rust/issues/42327>
+pub fn try_or_message_invalid<T, F: FnOnce() -> Option<T>>(action: F) ->
+Result<T, HandlerError> {
+    action().ok_or(HandlerError::InvalidMessage)
+}
+
 ///A handler is the part of a VT6 server that processes VT6 messages. This trait
 ///is the correct one for most handlers, but early handlers that come before the
 ///[vt6::core::server::Handler](../core/server/struct.Handler.html) must
@@ -114,7 +144,7 @@ pub trait Handler<C: Connection> {
     ///The return value shall indicate whether the received message was valid.
     ///If the handler does not know how to handle this message type, it may
     ///recurse into the next handler if there is one.
-    fn handle(&self, msg: &msg::Message, conn: &mut C) -> bool;
+    fn handle(&self, msg: &msg::Message, conn: &mut C) -> Result<(), HandlerError>;
 
     ///This method is called for each `want` message that requests usage of a
     ///module. If the `want` message offers multiple major versions, this
@@ -168,5 +198,5 @@ pub trait EarlyHandler<C: Connection> {
     ///The return value shall indicate whether the received message was valid.
     ///If the handler does not know how to handle this message type, it may
     ///recurse into the next handler if there is one.
-    fn handle(&self, msg: &msg::Message, conn: &mut C) -> bool;
+    fn handle(&self, msg: &msg::Message, conn: &mut C) -> Result<(), HandlerError>;
 }

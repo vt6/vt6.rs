@@ -21,5 +21,5 @@ mod handler;
 mod reject;
 
 pub use server::connection::Connection;
-pub use server::handler::{EarlyHandler, Handler};
+pub use server::handler::*;
 pub use server::reject::RejectHandler;

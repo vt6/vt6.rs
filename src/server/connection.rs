@@ -17,6 +17,8 @@
 ******************************************************************************/
 
 use core::ModuleVersion;
+use core::msg::BufferTooSmallError;
+use server::HandlerError;
 
 ///Encapsulates the server connection as far as required by [server
 ///handlers](trait.Handler.html). Specific handlers may require additional
@@ -29,32 +31,29 @@ use core::ModuleVersion;
 ///methods to it. Applications using no_std can provide their own non-allocating
 ///implementations of these methods instead.
 pub trait Connection {
-    ///Appends content to the send buffer of the connection. This can be used in
-    ///conjunction with
+    ///Executes a closure that appends content to the send buffer of the connection. This can be
+    ///used in conjunction with
     ///[vt6::core::msg::MessageFormatter](../core/msg/struct.MessageFormatter.html)
     ///to send messages:
     ///
     ///```rust,ignore
     ///use vt6::core::msg::MessageFormatter;
-    ///conn.write_to_send_buffer(|buf| {
-    ///    MessageFormatter::format(buf, "core.pub", 2, |fmt| {
-    ///        fmt.add_argument("example.title")?;
-    ///        fmt.add_argument("Hello World")
-    ///    }).unwrap_or(0)
+    ///conn.with_send_buffer(|buf| {
+    ///    let mut fmt = MessageFormatter::new(buf, "core.pub", 2);
+    ///    fmt.add_argument("example.title");
+    ///    fmt.add_argument("Hello World");
+    ///    fmt.finalize()
     ///});
     ///```
     ///
-    ///When `action` is executed, the argument `buf` is the writable part of the
-    ///send buffer. The return value of `action` shall be the number of bytes
-    ///written into `buf` (at its start, at `&buf[0..byte_count]`).
+    ///The argument `buf` given to `action` is the writable part of the
+    ///send buffer. The return value of `action` is the same as from
+    ///`MessageFormatter::finalize()`.
     ///
-    ///The `action` may be executed lazily, possibly on a different thread. When
-    ///`write_to_send_buffer()` is called multiple times by the same thread, it
-    ///is guaranteed that the provided `action` closures will be executed in the
-    ///same order, therefore preserving the intended order in which messages are
-    ///sent.
-    fn write_to_send_buffer<F>(&mut self, action: F)
-        where F: FnOnce(&mut [u8]) -> usize + Send;
+    ///If `action` returns a `BufferTooSmallError`, it is translated into
+    ///`HandlerError::SendBufferTooSmall`.
+    fn with_send_buffer<F>(&mut self, action: F) -> Result<(), HandlerError>
+        where F: FnOnce(&mut [u8]) -> Result<usize, BufferTooSmallError>;
 
     ///Record the fact that the server handler agrees to using the given module
     ///version on this connection.

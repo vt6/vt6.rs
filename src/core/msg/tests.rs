@@ -122,23 +122,24 @@ fn test_message_formatting() {
         let mut buf = vec![0; size];
         let result = make_example_message(&mut buf);
         if size < required_size {
-            assert_eq!(result, Err(BufferTooSmallError));
+            assert_eq!(result, Err(BufferTooSmallError(required_size - size)));
         } else {
             assert_eq!(result, Ok(required_size));
         }
     }
 
     //test a message without arguments
-    let size = MessageFormatter::format(&mut buf, "sig.claim", 0, |_| Ok(())).unwrap();
+    let size = MessageFormatter::new(&mut buf, "sig.claim", 0).finalize().unwrap();
     assert_eq!(&buf[0..size], b"{1|9:sig.claim,}" as &[u8]);
 
     //test a message with a large number of arguments
-    let size = MessageFormatter::format(&mut buf, "foo.bar", 1000, |f| {
+    let size = {
+        let mut f = MessageFormatter::new(&mut buf, "foo.bar", 1000);
         for _ in 0..1000 {
-            f.add_argument(&0)?;
+            f.add_argument(&0);
         }
-        Ok(())
-    }).unwrap();
+        f.finalize().unwrap()
+    };
     //prefix "{1001|7:foo.bar;" and suffix "}" have 17 bytes in total, and each
     //argument "1:0;" has 4 bytes
     assert_eq!(size, 4017);
@@ -146,8 +147,8 @@ fn test_message_formatting() {
 
 fn make_example_message(buf: &mut [u8]) -> Result<usize, BufferTooSmallError> {
     use core::ModuleVersion;
-    MessageFormatter::format(buf, "have", 2, |f| {
-        f.add_argument("core")?;
-        f.add_argument(&ModuleVersion { major: 1, minor: 0 })
-    })
+    let mut f = MessageFormatter::new(buf, "have", 2);
+    f.add_argument("core");
+    f.add_argument(&ModuleVersion { major: 1, minor: 0 });
+    f.finalize()
 }
