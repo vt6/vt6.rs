@@ -18,6 +18,7 @@
 
 use core::msg::*;
 use core::EncodeArgument;
+use server::HandlerError;
 
 ///A formatter for VT6 messages, as defined in
 ///[vt6/core1.0, section 2.1](https://vt6.io/std/core/1.0/#section-2-1).
@@ -91,6 +92,18 @@ impl<'b> MessageFormatter<'b> {
         } else {
             Ok(self.cursor)
         }
+    }
+
+    ///Like finalize(), but returns HandlerError::SendBufferTooSmall instead of
+    ///BufferTooSmallError, and is therefore suitable for use in implementations of
+    ///[vt6::server::Handler::handle()](../../server/trait.Handler.html).
+    ///
+    ///TODO: This is a provisional API. When the `try_trait` language feature
+    ///gets stable, replace this with a `std::convert::From<BufferTooSmallError>`
+    ///implementation on HandlerError.
+    ///Tracking issue: <https://github.com/rust-lang/rust/issues/42327>
+    pub fn finalize_or_handler_error(self) -> Result<usize, HandlerError> {
+        self.finalize().map_err(|e| HandlerError::SendBufferTooSmall(e.0))
     }
 
     fn add_char(&mut self, c: u8) {

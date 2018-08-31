@@ -29,8 +29,8 @@ use server::*;
 pub struct RejectHandler {}
 
 impl<C: Connection> Handler<C> for RejectHandler {
-    fn handle(&self, _msg: &msg::Message, _conn: &mut C) -> Result<(), HandlerError> {
-        Ok(())
+    fn handle(&self, _msg: &msg::Message, _conn: &mut C, _send_buffer: &mut [u8]) -> Result<usize, HandlerError> {
+        Err(HandlerError::InvalidMessage)
     }
 
     fn can_use_module(&self, _name: &str, _major_version: u16, _conn: &C) -> Option<u16> {
@@ -43,7 +43,7 @@ impl<C: Connection> Handler<C> for RejectHandler {
 }
 
 impl<C: Connection> EarlyHandler<C> for RejectHandler {
-    fn handle(&self, _msg: &msg::Message, _conn: &mut C) -> Result<(), HandlerError> {
-        Ok(())
+    fn handle(&self, _msg: &msg::Message, _conn: &mut C, _send_buffer: &mut [u8]) -> Result<usize, HandlerError> {
+        Err(HandlerError::InvalidMessage)
     }
 }

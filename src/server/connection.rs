@@ -17,12 +17,10 @@
 ******************************************************************************/
 
 use core::ModuleVersion;
-use core::msg::BufferTooSmallError;
-use server::HandlerError;
 
-///Encapsulates the server connection as far as required by [server
+///Encapsulates the state of a server connection as far as required by [server
 ///handlers](trait.Handler.html). Specific handlers may require additional
-///traits beyond this one.
+///traits beyond this one (see documentation/example on the Handler trait).
 ///
 ///For applications using std, the methods `enable_module` and
 ///`is_module_enabled` are implemented by
@@ -31,29 +29,13 @@ use server::HandlerError;
 ///methods to it. Applications using no_std can provide their own non-allocating
 ///implementations of these methods instead.
 pub trait Connection {
-    ///Executes a closure that appends content to the send buffer of the connection. This can be
-    ///used in conjunction with
-    ///[vt6::core::msg::MessageFormatter](../core/msg/struct.MessageFormatter.html)
-    ///to send messages:
-    ///
-    ///```rust,ignore
-    ///use vt6::core::msg::MessageFormatter;
-    ///conn.with_send_buffer(|buf| {
-    ///    let mut fmt = MessageFormatter::new(buf, "core.pub", 2);
-    ///    fmt.add_argument("example.title");
-    ///    fmt.add_argument("Hello World");
-    ///    fmt.finalize()
-    ///});
-    ///```
-    ///
-    ///The argument `buf` given to `action` is the writable part of the
-    ///send buffer. The return value of `action` is the same as from
-    ///`MessageFormatter::finalize()`.
-    ///
-    ///If `action` returns a `BufferTooSmallError`, it is translated into
-    ///`HandlerError::SendBufferTooSmall`.
-    fn with_send_buffer<F>(&mut self, action: F) -> Result<(), HandlerError>
-        where F: FnOnce(&mut [u8]) -> Result<usize, BufferTooSmallError>;
+    ///Returns the maximum size of the buffer where messages from the client are
+    ///received, or `None` if the buffer can grow arbitrarily.
+    fn receive_buffer_size(&self) -> Option<&usize>;
+    ///Returns the maximum size of the buffer where messages are formatted
+    ///before being sent to the client, or `None` if the buffer can grow
+    ///arbitrarily.
+    fn send_buffer_size(&self) -> Option<&usize>;
 
     ///Record the fact that the server handler agrees to using the given module
     ///version on this connection.

@@ -147,13 +147,14 @@ pub trait Handler<C: Connection> {
     ///and forwards to the following handlers using the more specific methods
     ///below.
     ///
-    ///If the handler wants to reply to this message, it can use the
-    ///`conn.queue_send_message()` method.
+    ///The `send_buffer` argument is the free part of the send buffer. The handler can use the
+    ///[MessageFormatter](../core/msg/struct.MessageFormatter.html) to append messages to the
+    ///buffer.
     ///
     ///The return value shall indicate whether the received message was valid.
     ///If the handler does not know how to handle this message type, it may
     ///recurse into the next handler if there is one.
-    fn handle(&self, msg: &msg::Message, conn: &mut C) -> Result<(), HandlerError>;
+    fn handle(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Result<usize, HandlerError>;
 
     ///This method is called for each `want` message that requests usage of a
     ///module. If the `want` message offers multiple major versions, this
@@ -201,11 +202,12 @@ pub trait EarlyHandler<C: Connection> {
     ///on this handler's server connection, unless a previous handler
     ///transformed the message into something else.
     ///
-    ///If the handler wants to reply to this message, it can use
-    ///`conn.queue_send_message()`.
+    ///The `send_buffer` argument is the free part of the send buffer. The handler can use the
+    ///[MessageFormatter](../core/msg/struct.MessageFormatter.html) to append messages to the
+    ///buffer.
     ///
     ///The return value shall indicate whether the received message was valid.
     ///If the handler does not know how to handle this message type, it may
     ///recurse into the next handler if there is one.
-    fn handle(&self, msg: &msg::Message, conn: &mut C) -> Result<(), HandlerError>;
+    fn handle(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Result<usize, HandlerError>;
 }
