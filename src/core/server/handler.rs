@@ -32,6 +32,11 @@ pub struct Handler<C: Connection, H: server::Handler<C>> {
     phantom: PhantomData<C>,
 }
 
+//The auto trait implementations of Send and Sync add a "where C: Send/Sync" bound because
+//PhantomData<C> usually implies ownership of some C, but that's not true here.
+unsafe impl<C: Connection, H: server::Handler<C>> Send for Handler<C, H> where H: Send {}
+unsafe impl<C: Connection, H: server::Handler<C>> Sync for Handler<C, H> where H: Sync {}
+
 impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
     ///Constructor. The argument is the next handler after this handler.
     pub fn new(next: H) -> Self {

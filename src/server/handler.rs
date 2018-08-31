@@ -20,7 +20,7 @@ use core::{msg, EncodeArgument};
 use server::Connection;
 
 ///The error type returned by [`Handler::handle()`](trait.Handler.html) and
-///[`EarlyHandler::handle()`](trait.Handler.html).
+///[`EarlyHandler::handle()`](trait.EarlyHandler.html).
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub enum HandlerError {
     ///The message given to `handle()` was invalid. The caller may need to
@@ -70,7 +70,7 @@ Result<T, HandlerError> {
 ///```
 ///
 ///As shown above, the innermost handler factory is usually going to be
-///[vt6::struct::RejectHandler](struct.RejectHandler.html), which rejects any
+///[vt6::server::RejectHandler](struct.RejectHandler.html), which rejects any
 ///messages that have not already been recognized by other handlers along the
 ///way.
 ///
@@ -131,6 +131,15 @@ Result<T, HandlerError> {
 ///
 ///The basic idea is that handlers decode VT6 messages into method calls on the
 ///connection object.
+///
+///Note that, when using `PhantomData<C>` as in the example above, the auto trait implementations
+///of Send and Sync have an unhelpful "where C: Send/Sync" bound, so it is recommended to provide
+///your own trait implementations without that bound:
+///
+///```rust,ignore
+///unsafe impl<C: Connection + ExampleConnection, H: Handler<C>> Send for ExampleHandler<C, H> where H: Send {}
+///unsafe impl<C: Connection + ExampleConnection, H: Handler<C>> Sync for ExampleHandler<C, H> where H: Sync {}
+///```
 pub trait Handler<C: Connection> {
     ///This method is called for each message from the client that is received
     ///on this handler's server connection, except for messages that the
