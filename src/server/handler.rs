@@ -80,12 +80,14 @@ use server::Connection;
 ///    fn frobnicate(&mut self);
 ///}
 ///
-///struct ExampleHandler<C: Connection + ExampleConnection, H: Handler<C>> {
+///struct ExampleHandler<H> {
 ///    next: H,
-///    phantom: PhantomData<C>,
 ///}
 ///
-///impl<C: Connection + ExampleConnection> Handler<C> for ExampleHandler<C> {
+///impl<C, H> Handler<C> for ExampleHandler<H>
+///     where H: Handler<C>,
+///           C: Connection + ExampleConnection
+///{
 ///    fn handle(&self, msg: &msg::Message, conn: &mut C) -> Option<usize> {
 ///        if msg.type_name() == ("example", "frobnicate") {
 ///            //... argument validation elided for brevity ...
@@ -102,15 +104,6 @@ use server::Connection;
 ///
 ///The basic idea is that handlers decode VT6 messages into method calls on the
 ///connection object.
-///
-///Note that, when using `PhantomData<C>` as in the example above, the auto trait implementations
-///of Send and Sync have an unhelpful "where C: Send/Sync" bound, so it is recommended to provide
-///your own trait implementations without that bound:
-///
-///```rust,ignore
-///unsafe impl<C: Connection + ExampleConnection, H: Handler<C>> Send for ExampleHandler<C, H> where H: Send {}
-///unsafe impl<C: Connection + ExampleConnection, H: Handler<C>> Sync for ExampleHandler<C, H> where H: Sync {}
-///```
 pub trait Handler<C: Connection> {
     ///This method is called for each message from the client that is received
     ///on this handler's server connection, unless a previous handler

@@ -17,34 +17,37 @@
 ******************************************************************************/
 
 use libcore::str;
-use std::marker::PhantomData;
 
 use core::*;
 use server::{self, Connection};
 
 ///A [handler](../../server/trait.Handler.html) that implements the [vt6/core
-///module](https://vt6.io/std/core/).
+///module](https://vt6.io/std/core/). The type argument `H` is the next handler
+///which is wrapped by this handler:
+///
+///```rust,ignore
+///let handler = vt6::core::server::Handler::new(next_handler);
+///```
+///
+///See documentation on the [Handler trait](../../server/trait.Handler.html) for
+///how handlers are chained together.
 ///
 ///This handler is notable because every handler preceding it implements the
 ///[EarlyHandler trait](../../server/trait.EarlyHandler.html), but every handler
 ///succeeding it implements the [Handler trait](../../server/trait.Handler.html).
-pub struct Handler<C: Connection, H: server::Handler<C>> {
+pub struct Handler<H> {
     next: H,
-    phantom: PhantomData<C>,
 }
 
-//The auto trait implementations of Send and Sync add a "where C: Send/Sync" bound because
-//PhantomData<C> usually implies ownership of some C, but that's not true here.
-unsafe impl<C: Connection, H: server::Handler<C>> Send for Handler<C, H> where H: Send {}
-unsafe impl<C: Connection, H: server::Handler<C>> Sync for Handler<C, H> where H: Sync {}
-
-impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
+impl<H> Handler<H> {
     ///Constructor. The argument is the next handler after this handler.
     pub fn new(next: H) -> Self {
-        Handler { next: next, phantom: PhantomData }
+        Handler { next: next }
     }
 
-    fn handle_want(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle_want<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>
+        where H: server::Handler<C>
+    {
         //validate arguments: first argument is module name
         let mut args_iter = msg.arguments();
         let module_name = str::from_utf8(args_iter.next()?).ok()?;
@@ -81,7 +84,9 @@ impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
         }
     }
 
-    fn check_want<I: Iterator<Item=u16> + Clone>(&self, module_name: &str, major_versions_iter: I, conn: &C) -> Option<(ModuleVersion, bool)> {
+    fn check_want<C: Connection, I: Iterator<Item=u16> + Clone>(&self, module_name: &str, major_versions_iter: I, conn: &C) -> Option<(ModuleVersion, bool)>
+        where H: server::Handler<C>
+    {
         //did we agree to this module already?
         if let Some(agreed_version) = conn.is_module_enabled(module_name) {
             //answer consistently: positively if the same major version is requested again,
@@ -114,7 +119,9 @@ impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
         }
     }
 
-    fn handle_set_sub(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8], is_set: bool) -> Option<usize> {
+    fn handle_set_sub<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8], is_set: bool) -> Option<usize>
+        where H: server::Handler<C>
+    {
         //expect exactly one argument (property name) for core.sub, or exactly two
         //arguments (property name and requested value) for core.set
         let mut args = msg.arguments();
@@ -140,7 +147,7 @@ impl<C: Connection, H: server::Handler<C>> Handler<C, H> {
     }
 }
 
-impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<C, H> {
+impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<H> {
     fn handle(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         let has_core1 = conn.is_module_enabled("core").map_or(false, |version| version.major == 1);
         match msg.type_name() {
@@ -153,7 +160,7 @@ impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<C
     }
 }
 
-impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<C, H> {
+impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
     fn handle(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         (self as &server::EarlyHandler<C>).handle(msg, conn, send_buffer)
     }
