@@ -29,13 +29,12 @@ use core::ModuleVersion;
 ///methods to it. Applications using no_std can provide their own non-allocating
 ///implementations of these methods instead.
 pub trait Connection {
-    ///Returns the maximum size of the buffer where messages from the client are
-    ///received, or `None` if the buffer can grow arbitrarily.
-    fn receive_buffer_size(&self) -> Option<&usize>;
-    ///Returns the maximum size of the buffer where messages are formatted
-    ///before being sent to the client, or `None` if the buffer can grow
-    ///arbitrarily.
-    fn send_buffer_size(&self) -> Option<&usize>;
+    ///Returns the maximum length in bytes of client messages that can be
+    ///received on this connection.
+    fn max_client_message_length(&self) -> &usize;
+    ///Returns the maximum length in bytes of server messages that can be
+    ///sent on this connection.
+    fn max_server_message_length(&self) -> &usize;
 
     ///Record the fact that the server handler agrees to using the given module
     ///version on this connection.
