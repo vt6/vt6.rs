@@ -20,3 +20,6 @@ mod handler;
 pub use core::server::handler::*;
 mod tracker;
 pub use core::server::tracker::*;
+
+#[cfg(test)]
+mod tests;
