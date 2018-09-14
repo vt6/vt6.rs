@@ -2,7 +2,3 @@
 name = "vt6"
 version = "0.0.1"
 authors = ["Stefan Majewsky <majewsky@gmx.net>"]
-
-[dependencies]
-regex = "^0.2"
-lazy_static = "^1"
