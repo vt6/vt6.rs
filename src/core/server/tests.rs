@@ -16,6 +16,8 @@
 *
 *******************************************************************************/
 
+use std;
+
 use core::{self, msg};
 use server::{self, EarlyHandler};
 
@@ -115,12 +117,132 @@ fn test_invalid_wants() {
     );
 }
 
+#[test]
+fn test_property_handling() {
+    let mut conn = TestConnection::new();
+
+    //need to negotiate core before using core.set and core.sub
+    assert_eq!(
+        conn.handle_message("{3|4:want,4:core,1:1,}"),
+        Some("{3|4:have,4:core,3:1.0,}".into()),
+    );
+
+    //check readonly properties in core
+    assert_eq!(
+        conn.handle_message("{2|8:core.sub,25:core.server-msg-bytes-max,}"),
+        Some("{3|8:core.pub,25:core.server-msg-bytes-max,4:1024,}".into()),
+    );
+    assert_eq!(
+        conn.handle_message("{2|8:core.sub,25:core.client-msg-bytes-max,}"),
+        Some("{3|8:core.pub,25:core.client-msg-bytes-max,4:2048,}".into()),
+    );
+
+    //need to negotiate test before using test.title
+    assert_eq!(
+        conn.handle_message("{3|4:want,4:test,1:1,}"),
+        Some("{3|4:have,4:test,3:1.3,}".into()),
+    );
+
+    //check core.sub
+    assert_eq!(
+        conn.handle_message("{2|8:core.sub,10:test.title,}"),
+        Some("{3|8:core.pub,10:test.title,7:initial,}".into()),
+    );
+    //check core.set where the server accepts the suggested value
+    assert_eq!(
+        conn.handle_message("{3|8:core.set,10:test.title,0:,}"),
+        Some("{3|8:core.pub,10:test.title,0:,}".into()),
+    );
+    assert_eq!(
+        conn.handle_message("{3|8:core.set,10:test.title,19:Lorem ipsum, dolor.,}"),
+        Some("{3|8:core.pub,10:test.title,19:Lorem ipsum, dolor.,}".into()),
+    );
+    //check core.set where the server normalizes the requested value
+    assert_eq!(
+        conn.handle_message("{3|8:core.set,10:test.title,28:Lorem ipsum, dolor sit amet.,}"),
+        Some("{3|8:core.pub,10:test.title,20:Lorem ipsum, dolor s,}".into()),
+    );
+}
+
+#[test]
+fn test_property_handling_invalid_syntax() {
+    let mut conn = TestConnection::new();
+
+    //need to negotiate core before using core.set and core.sub
+    assert_eq!(
+        conn.handle_message("{3|4:want,4:core,1:1,}"),
+        Some("{3|4:have,4:core,3:1.0,}".into()),
+    );
+    //need to negotiate test before using test.title
+    assert_eq!(
+        conn.handle_message("{3|4:want,4:test,1:1,}"),
+        Some("{3|4:have,4:test,3:1.3,}".into()),
+    );
+
+    //core.sub: missing property name
+    assert_eq!(
+        conn.handle_message("{1|8:core.sub,}"),
+        None,
+    );
+    //core.sub: multiple properties
+    assert_eq!(
+        conn.handle_message("{3|8:core.sub,10:test.title,25:core.server-msg-bytes-max,}"),
+        None,
+    );
+
+    //core.set: missing property name
+    assert_eq!(
+        conn.handle_message("{1|8:core.set,}"),
+        None,
+    );
+    //core.set: missing property value
+    assert_eq!(
+        conn.handle_message("{2|8:core.set,10:test.title,}"),
+        None,
+    );
+    //core.set: unexpected extra arguments (an early draft of vt6/core1.0
+    //allowed setting multiple properties at once like shown here)
+    assert_eq!(
+        conn.handle_message("{5|8:core.set,10:test.title,3:foo,25:core.server-msg-bytes-max,4:2048,}"),
+        None,
+    );
+}
+
+#[test]
+fn test_property_handling_invalid_negotiation() {
+    //cannot use core.sub or core.set without negotiating core first
+    assert_eq!(
+        TestConnection::handle_single_message("{2|8:core.sub,10:test.title,}"),
+        None,
+    );
+    assert_eq!(
+        TestConnection::handle_single_message("{3|8:core.set,10:test.title,3:foo,}"),
+        None,
+    );
+
+    //cannot use test.title without negotiating title first
+    let mut conn = TestConnection::new();
+    assert_eq!(
+        TestConnection::handle_single_message("{3|4:want,4:core,1:1,}"),
+        Some("{3|4:have,4:core,3:1.0,}".into()),
+    );
+    assert_eq!(
+        conn.handle_message("{2|8:core.sub,10:test.title,}"),
+        None,
+    );
+    assert_eq!(
+        conn.handle_message("{3|8:core.set,10:test.title,3:foo,}"),
+        None,
+    );
+}
+
 struct TestConnection {
     tracker: core::server::Tracker,
+    title: String,
 }
 
 impl TestConnection {
-    fn new() -> Self { TestConnection { tracker: core::server::Tracker::default() } }
+    fn new() -> Self { TestConnection { tracker: core::server::Tracker::default(), title: "initial".into() } }
 
     fn handle_single_message(input: &str) -> Option<String> {
         Self::new().handle_message(input)
@@ -137,8 +259,8 @@ impl TestConnection {
 }
 
 impl server::Connection for TestConnection {
-    fn max_server_message_length(&self) -> &usize { &1024 }
-    fn max_client_message_length(&self) -> &usize { &1024 }
+    fn max_server_message_length(&self) -> usize { 1024 }
+    fn max_client_message_length(&self) -> usize { 2048 }
 
     fn enable_module(&mut self, name: &str, version: core::ModuleVersion) {
         self.tracker.enable_module(name, version)
@@ -148,11 +270,21 @@ impl server::Connection for TestConnection {
     }
 }
 
+trait TestConnectionTrait {
+    fn get_title(&self) -> &str;
+    fn set_title(&mut self, title: &str);
+}
+
+impl TestConnectionTrait for TestConnection {
+    fn get_title(&self) -> &str { &self.title }
+    fn set_title(&mut self, title: &str) { self.title = title.into() }
+}
+
 ////////////////////////////////////////////////////////////////////////////
 
 struct TestHandler {} //NOTE: includes RejectHandler
 
-impl<C: server::Connection> server::Handler<C> for TestHandler {
+impl<C: server::Connection + TestConnectionTrait> server::Handler<C> for TestHandler {
 
     fn handle(&self, _msg: &msg::Message, _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
         None
@@ -166,8 +298,26 @@ impl<C: server::Connection> server::Handler<C> for TestHandler {
         }
     }
 
-    fn get_set_property<'c>(&self, _name: &str, _requested_value: Option<&[u8]>, _conn: &'c mut C) -> Option<&'c core::EncodeArgument> {
-        None //TODO
+    fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+        //the "test.title" property accepts string values, but strings longer than 20 bytes are
+        //truncated to fit (so that we can have testcases where `requested_value != new_value`)
+        if name == "test.title" && conn.is_module_enabled("test").is_some() {
+            if let Some(new_bytestr) = requested_value {
+                if let Ok(mut new_str) = std::str::from_utf8(new_bytestr) {
+                    if new_str.len() > 20 {
+                        let mut idx = 20;
+                        while !new_str.is_char_boundary(idx) {
+                            idx -= 1;
+                        }
+                        new_str = &new_str[0..idx];
+                    }
+                    conn.set_title(new_str);
+                }
+            }
+            msg::MessageFormatter::publish_property(send_buffer, name, conn.get_title())
+        } else {
+            None
+        }
     }
 
 }

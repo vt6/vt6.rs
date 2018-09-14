@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use core::{msg, EncodeArgument};
+use core::msg;
 use server::*;
 
 ///A [handler](trait.Handler.html) that rejects all messages and requests sent
@@ -37,7 +37,7 @@ impl<C: Connection> Handler<C> for RejectHandler {
         None
     }
 
-    fn get_set_property<'c>(&self, _name: &str, _requested_value: Option<&[u8]>, _conn: &'c mut C) -> Option<&'c EncodeArgument> {
+    fn handle_property<'c>(&self, _name: &str, _requested_value: Option<&[u8]>, _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
         None
     }
 }

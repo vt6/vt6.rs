@@ -138,12 +138,7 @@ impl<H> Handler<H> {
             return None;
         }
 
-        let value = (self as &server::Handler<C>)
-            .get_set_property(name, requested_value, conn)?;
-        let mut f = msg::MessageFormatter::new(send_buffer, "core.pub", 2);
-        f.add_argument(name);
-        f.add_argument(value);
-        f.finalize().ok()
+        (self as &server::Handler<C>).handle_property(name, requested_value, conn, send_buffer)
     }
 }
 
@@ -173,15 +168,17 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
         }
     }
 
-    fn get_set_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &'c mut C) -> Option<&'c EncodeArgument> {
+    fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         //we do not support changing any properties yet, so just return the
         //current value
         if name == "core.server-msg-bytes-max" {
-            Some(conn.max_server_message_length())
+            msg::MessageFormatter::publish_property(
+                send_buffer, name, &conn.max_server_message_length())
         } else if name == "core.client-msg-bytes-max" {
-            Some(conn.max_client_message_length())
+            msg::MessageFormatter::publish_property(
+                send_buffer, name, &conn.max_client_message_length())
         } else {
-            self.next.get_set_property(name, requested_value, conn)
+            self.next.handle_property(name, requested_value, conn, send_buffer)
         }
     }
 }

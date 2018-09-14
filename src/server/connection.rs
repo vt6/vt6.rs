@@ -31,10 +31,10 @@ use core::ModuleVersion;
 pub trait Connection {
     ///Returns the maximum length in bytes of client messages that can be
     ///received on this connection.
-    fn max_client_message_length(&self) -> &usize;
+    fn max_client_message_length(&self) -> usize;
     ///Returns the maximum length in bytes of server messages that can be
     ///sent on this connection.
-    fn max_server_message_length(&self) -> &usize;
+    fn max_server_message_length(&self) -> usize;
 
     ///Record the fact that the server handler agrees to using the given module
     ///version on this connection.
