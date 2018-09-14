@@ -17,9 +17,6 @@
 ******************************************************************************/
 
 extern crate core as libcore;
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
 
 ///Support for the [vt6/core module](https://vt6.io/std/core/).
 pub mod core;

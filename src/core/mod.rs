@@ -16,8 +16,6 @@
 *
 ******************************************************************************/
 
-use regex::Regex;
-
 mod encode_argument;
 pub use self::encode_argument::*;
 mod module_version;
@@ -27,13 +25,6 @@ pub use self::module_version::*;
 pub mod msg;
 ///Server-side implementation of the [vt6/core module](https://vt6.io/std/core/).
 pub mod server;
-
-lazy_static! {
-    //regex matching <identifier>
-    static ref IDENT: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z_-]*$").unwrap();
-    //regex matching <scoped-identifier>
-    static ref SCOPED_IDENT: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z_-]*\.[a-zA-Z_][a-zA-Z_-]*$").unwrap();
-}
 
 ///Checks if the argument is an identifier, as defined by
 ///[vt6/core1.0, section 1.4](https://vt6.io/std/core/1.0/#section-1-4).
@@ -49,7 +40,25 @@ lazy_static! {
 ///assert_eq!(is_identifier("_what-is-this"), true);
 ///```
 pub fn is_identifier(name: &str) -> bool {
-  IDENT.is_match(name)
+    let mut iter = name.chars();
+    match iter.next() {
+        Some(ch) if is_ident_leader(ch) => {},
+        _ => return false,
+    };
+    iter.all(is_ident_char)
+}
+
+fn is_ident_leader(ch: char) -> bool {
+    (ch >= 'A' && ch <= 'Z') ||
+    (ch >= 'a' && ch <= 'z') ||
+    ch == '_'
+}
+
+fn is_ident_char(ch: char) -> bool {
+    (ch >= 'A' && ch <= 'Z') ||
+    (ch >= 'a' && ch <= 'z') ||
+    ch == '_' ||
+    ch == '-'
 }
 
 ///Checks if the argument is a scoped identifier, as defined by
@@ -73,13 +82,18 @@ pub fn is_identifier(name: &str) -> bool {
 ///assert_eq!(is_scoped_identifier("want"),          None);
 ///assert_eq!(is_scoped_identifier("have"),          None);
 ///assert_eq!(is_scoped_identifier("nope"),          None);
+///assert_eq!(is_scoped_identifier("."),             None);
+///assert_eq!(is_scoped_identifier(".foo"),          None);
+///assert_eq!(is_scoped_identifier("foo."),          None);
 ///```
 pub fn is_scoped_identifier(name: &str) -> Option<(&str, &str)> {
-  if SCOPED_IDENT.is_match(name) {
-    Some(split_scoped_identifier(name))
-  } else {
-    None
-  }
+    let dot_idx = name.find('.')?;
+    let (left, right) = (&name[0..dot_idx], &name[dot_idx+1..]);
+    if is_identifier(left) && is_identifier(right) {
+      Some((left, right))
+    } else {
+      None
+    }
 }
 
 ///Checks if the argument is a message type, as defined by
@@ -103,18 +117,14 @@ pub fn is_scoped_identifier(name: &str) -> Option<(&str, &str)> {
 ///assert_eq!(is_message_type("want"),          Some(("", "want")));
 ///assert_eq!(is_message_type("have"),          Some(("", "have")));
 ///assert_eq!(is_message_type("nope"),          Some(("", "nope")));
+///assert_eq!(is_message_type("."),             None);
+///assert_eq!(is_message_type(".foo"),          None);
+///assert_eq!(is_message_type("foo."),          None);
 ///```
 pub fn is_message_type(name: &str) -> Option<(&str, &str)> {
-  if SCOPED_IDENT.is_match(name) || name == "want" || name == "have" || name == "nope" {
-    Some(split_scoped_identifier(name))
+  if name == "want" || name == "have" || name == "nope" {
+    Some(("", name))
   } else {
-    None
+    is_scoped_identifier(name)
   }
-}
-
-fn split_scoped_identifier(name: &str) -> (&str, &str) {
-    match name.find('.') {
-        Some(idx) => (&name[0..idx], &name[idx+1..]),
-        None      => ("", &name),
-    }
 }
