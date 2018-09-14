@@ -53,31 +53,6 @@ impl<'b> MessageFormatter<'b> {
         f
     }
 
-    ///This convenience function uses MessageFormatter to format a `core.pub`
-    ///message into the given `buffer`. This is intended for usage by
-    ///implementations of
-    ///[`vt6::server::Handler::get_set_property()`](../../server/trait.Handler.html).
-    ///For example,
-    ///
-    ///```rust,ignore
-    ///let result = MessageFormatter::publish_property(buf, "example.counter", &42);
-    ///```
-    ///
-    ///is equivalent to:
-    ///
-    ///```rust,ignore
-    ///let mut f = MessageFormatter::new(buf, "core.pub", 2);
-    ///f.add_argument("example.counter");
-    ///f.add_argument(&42);
-    ///let result = f.finalize();
-    ///```
-    pub fn publish_property<T: EncodeArgument + ?Sized>(buffer: &'b mut [u8], property_name: &str, property_value: &T) -> Option<usize> {
-        let mut f = MessageFormatter::new(buffer, "core.pub", 2);
-        f.add_argument(property_name);
-        f.add_argument(property_value);
-        f.finalize().ok()
-    }
-
     ///Adds an argument to the message that is being rendered.
     ///
     ///# Panics

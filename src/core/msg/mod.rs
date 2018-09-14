@@ -19,6 +19,9 @@
 use libcore::{self, fmt};
 use std;
 
+///Convenience functions for formatting often-used messages.
+pub mod prerecorded;
+
 mod format;
 pub use self::format::*;
 

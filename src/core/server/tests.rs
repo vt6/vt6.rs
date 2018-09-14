@@ -289,6 +289,7 @@ impl server::Handler<TestConnection> for TestHandler {
     }
 
     fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
+        use core::msg::prerecorded::publish_property;
         use server::Connection;
 
         //the "test.title" property accepts string values, but strings longer than 20 bytes are
@@ -306,7 +307,7 @@ impl server::Handler<TestConnection> for TestHandler {
                     conn.title = new_str.into();
                 }
             }
-            msg::MessageFormatter::publish_property(send_buffer, name, conn.title.as_str())
+            publish_property(send_buffer, name, conn.title.as_str())
         } else {
             None
         }

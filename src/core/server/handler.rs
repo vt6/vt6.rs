@@ -22,8 +22,9 @@ use core::*;
 use server::{self, Connection};
 
 ///A [handler](../../server/trait.Handler.html) that implements the [vt6/core
-///module](https://vt6.io/std/core/). The type argument `H` is the next handler
-///which is wrapped by this handler:
+///module](https://vt6.io/std/core/).
+///
+///The type argument `H` is the next handler which is wrapped by this handler:
 ///
 ///```rust,ignore
 ///let handler = vt6::core::server::Handler::new(next_handler);
@@ -169,14 +170,13 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
     }
 
     fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+        use core::msg::prerecorded::publish_property;
         //we do not support changing any properties yet, so just return the
         //current value
         if name == "core.server-msg-bytes-max" {
-            msg::MessageFormatter::publish_property(
-                send_buffer, name, &conn.max_server_message_length())
+            publish_property(send_buffer, name, &conn.max_server_message_length())
         } else if name == "core.client-msg-bytes-max" {
-            msg::MessageFormatter::publish_property(
-                send_buffer, name, &conn.max_client_message_length())
+            publish_property(send_buffer, name, &conn.max_client_message_length())
         } else {
             self.next.handle_property(name, requested_value, conn, send_buffer)
         }
