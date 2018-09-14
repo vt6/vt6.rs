@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use libcore::str;
+use std::str;
 
 use common::core::*;
 use server::{self, Connection};

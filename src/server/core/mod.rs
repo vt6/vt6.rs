@@ -18,7 +18,10 @@
 
 mod handler;
 pub use self::handler::*;
+
+#[cfg(any(test, feature = "use_std"))]
 mod tracker;
+#[cfg(any(test, feature = "use_std"))]
 pub use self::tracker::*;
 
 #[cfg(test)]

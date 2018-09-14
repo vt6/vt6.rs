@@ -253,8 +253,7 @@ impl TestConnection {
         let handler = server::core::Handler::new(TestHandler {});
         let mut send_buf = vec![0;1024];
         let bytes_written = handler.handle(&message, self, &mut send_buf)?;
-        use libcore::str;
-        Some(str::from_utf8(&send_buf[0..bytes_written]).unwrap().into())
+        Some(std::str::from_utf8(&send_buf[0..bytes_written]).unwrap().into())
     }
 }
 
