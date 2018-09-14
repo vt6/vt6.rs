@@ -106,10 +106,9 @@ impl<'b> MessageFormatter<'b> {
     //`size` must be the result of `arg.get_size()`. It is passed into here
     //manually to avoid duplicate get_size() calls.
     fn encode<T: EncodeArgument + ?Sized>(&mut self, arg: &T, size: usize) {
-        let new_cursor = self.cursor.wrapping_add(size);
-        //check for integer overflow
-        if new_cursor < self.cursor {
-            panic!("overflow in MessageFormatter.cursor :: usize");
+        let (new_cursor, overflow) = self.cursor.overflowing_add(size);
+        if overflow {
+            panic!("Integer overflow in MessageFormatter.cursor :: usize");
         }
 
         if new_cursor <= self.buffer.len() {
