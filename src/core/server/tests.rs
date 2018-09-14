@@ -270,27 +270,17 @@ impl server::Connection for TestConnection {
     }
 }
 
-trait TestConnectionTrait {
-    fn get_title(&self) -> &str;
-    fn set_title(&mut self, title: &str);
-}
-
-impl TestConnectionTrait for TestConnection {
-    fn get_title(&self) -> &str { &self.title }
-    fn set_title(&mut self, title: &str) { self.title = title.into() }
-}
-
 ////////////////////////////////////////////////////////////////////////////
 
 struct TestHandler {} //NOTE: includes RejectHandler
 
-impl<C: server::Connection + TestConnectionTrait> server::Handler<C> for TestHandler {
+impl server::Handler<TestConnection> for TestHandler {
 
-    fn handle(&self, _msg: &msg::Message, _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle(&self, _msg: &msg::Message, _conn: &mut TestConnection, _send_buffer: &mut [u8]) -> Option<usize> {
         None
     }
 
-    fn can_use_module(&self, name: &str, major_version: u16, _conn: &C) -> Option<u16> {
+    fn can_use_module(&self, name: &str, major_version: u16, _conn: &TestConnection) -> Option<u16> {
         match (name, major_version) {
             ("test", 1) => Some(3),
             ("test", 2) => Some(1),
@@ -298,7 +288,9 @@ impl<C: server::Connection + TestConnectionTrait> server::Handler<C> for TestHan
         }
     }
 
-    fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
+        use server::Connection;
+
         //the "test.title" property accepts string values, but strings longer than 20 bytes are
         //truncated to fit (so that we can have testcases where `requested_value != new_value`)
         if name == "test.title" && conn.is_module_enabled("test").is_some() {
@@ -311,10 +303,10 @@ impl<C: server::Connection + TestConnectionTrait> server::Handler<C> for TestHan
                         }
                         new_str = &new_str[0..idx];
                     }
-                    conn.set_title(new_str);
+                    conn.title = new_str.into();
                 }
             }
-            msg::MessageFormatter::publish_property(send_buffer, name, conn.get_title())
+            msg::MessageFormatter::publish_property(send_buffer, name, conn.title.as_str())
         } else {
             None
         }
