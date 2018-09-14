@@ -24,7 +24,7 @@ use core::ModuleVersion;
 ///
 ///For applications using std, the methods `enable_module` and
 ///`is_module_enabled` are implemented by
-///[vt6::core::server::Tracker](../core/server/struct.Tracker.html), so
+///[vt6::server::core::Tracker](core/struct.Tracker.html), so
 ///implementors of Connection can just hold a Tracker instance and forward those
 ///methods to it. Applications using no_std can provide their own non-allocating
 ///implementations of these methods instead.

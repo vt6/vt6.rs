@@ -17,9 +17,9 @@
 ******************************************************************************/
 
 mod handler;
-pub use core::server::handler::*;
+pub use self::handler::*;
 mod tracker;
-pub use core::server::tracker::*;
+pub use self::tracker::*;
 
 #[cfg(test)]
 mod tests;

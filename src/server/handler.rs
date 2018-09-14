@@ -21,7 +21,7 @@ use server::Connection;
 
 ///A handler is the part of a VT6 server that processes VT6 messages. This trait
 ///is the correct one for most handlers, but early handlers that come before the
-///[vt6::core::server::Handler](../core/server/struct.Handler.html) must
+///[vt6::server::core::Handler](core/struct.Handler.html) must
 ///implement [EarlyHandler](trait.EarlyHandler.html) instead.
 ///
 ///# Composition of handlers
@@ -36,7 +36,7 @@ use server::Connection;
 ///let handler = vt6::server::RejectHandler {};
 ///let handler = FirstCustomHandler::new(handler);
 ///let handler = SecondCustomHandler::new(handler);
-///let handler = vt6::core::server::Handler::new(handler);
+///let handler = vt6::server::core::Handler::new(handler);
 ///```
 ///
 ///As shown above, the innermost handler factory is usually going to be
@@ -45,7 +45,7 @@ use server::Connection;
 ///way.
 ///
 ///The outermost handler factory is usually going to be
-///[vt6::core::server::Handler](../core/server/struct.Handler.html), which
+///[vt6::server::core::Handler](core/struct.Handler.html), which
 ///translates module negotiation and property pub/sub messages into more
 ///specific requests for the other handlers.
 ///
@@ -162,9 +162,8 @@ pub trait Handler<C: Connection> {
 
 ///A handler is the part of a VT6 server that processes VT6 messages. This trait
 ///is only used for early handlers that come before the
-///[vt6::core::server::Handler](../core/server/struct.Handler.html). Most
-///handlers will want to implement the regular [Handler
-///trait](trait.Handler.html).
+///[vt6::server::core::Handler](core/struct.Handler.html). Most handlers will
+///want to implement the regular [Handler trait](trait.Handler.html).
 ///
 ///Refer to the documentation on the [Handler trait](trait.Handler.html) for
 ///more details about the concept of handlers.

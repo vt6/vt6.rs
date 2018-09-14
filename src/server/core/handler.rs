@@ -21,7 +21,7 @@ use libcore::str;
 use core::*;
 use server::{self, Connection};
 
-///A [handler](../../server/trait.Handler.html) that implements the [vt6/core
+///A [handler](../trait.Handler.html) that implements the [vt6/core
 ///module](https://vt6.io/std/core/).
 ///
 ///The type argument `H` is the next handler which is wrapped by this handler:
@@ -30,12 +30,12 @@ use server::{self, Connection};
 ///let handler = vt6::core::server::Handler::new(next_handler);
 ///```
 ///
-///See documentation on the [Handler trait](../../server/trait.Handler.html) for
+///See documentation on the [Handler trait](../trait.Handler.html) for
 ///how handlers are chained together.
 ///
 ///This handler is notable because every handler preceding it implements the
-///[EarlyHandler trait](../../server/trait.EarlyHandler.html), but every handler
-///succeeding it implements the [Handler trait](../../server/trait.Handler.html).
+///[EarlyHandler trait](../trait.EarlyHandler.html), but every handler
+///succeeding it implements the [Handler trait](../trait.Handler.html).
 pub struct Handler<H> {
     next: H,
 }

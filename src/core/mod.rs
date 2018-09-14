@@ -23,8 +23,6 @@ pub use self::module_version::*;
 
 ///Parsing and serializing of VT6 messages.
 pub mod msg;
-///Server-side implementation of the [vt6/core module](https://vt6.io/std/core/).
-pub mod server;
 
 ///Checks if the argument is an identifier, as defined by
 ///[vt6/core1.0, section 1.4](https://vt6.io/std/core/1.0/#section-1-4).
