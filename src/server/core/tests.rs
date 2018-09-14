@@ -18,7 +18,7 @@
 
 use std;
 
-use core::{self, msg};
+use common::core::{self, msg};
 use server::{self, EarlyHandler};
 
 #[test]
@@ -289,7 +289,7 @@ impl server::Handler<TestConnection> for TestHandler {
     }
 
     fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
-        use core::msg::prerecorded::publish_property;
+        use common::core::msg::prerecorded::publish_property;
         use server::Connection;
 
         //the "test.title" property accepts string values, but strings longer than 20 bytes are

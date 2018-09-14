@@ -18,7 +18,7 @@
 
 extern crate core as libcore;
 
-///Support for the [vt6/core module](https://vt6.io/std/core/).
-pub mod core;
-///Basic types and facilities for VT6 servers.
+///Common types and definitions that can be used both by VT6 servers and clients.
+pub mod common;
+///Implementation parts for VT6 servers.
 pub mod server;

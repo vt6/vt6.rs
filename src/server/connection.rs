@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use core::ModuleVersion;
+use common::core::ModuleVersion;
 
 ///Encapsulates the state of a server connection as far as required by [server
 ///handlers](trait.Handler.html). Specific handlers may require additional

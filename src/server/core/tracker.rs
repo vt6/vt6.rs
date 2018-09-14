@@ -16,9 +16,9 @@
 *
 ******************************************************************************/
 
-use std::collections::HashMap;
+use common::core::ModuleVersion;
 
-use core::ModuleVersion;
+use std::collections::HashMap;
 
 ///Tracks which modules a VT6 server has agreed to on a specific server
 ///connection. This type implements several methods required by [the

@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use core::msg;
+use common::core::msg;
 use server::Connection;
 
 ///A handler is the part of a VT6 server that processes VT6 messages. This trait
@@ -73,7 +73,7 @@ use server::Connection;
 ///
 ///```rust,ignore
 ///use std::marker::PhantomData;
-///use vt6::core::msg;
+///use vt6::common::core::msg;
 ///use vt6::server::{Connection, Handler};
 ///
 ///trait ExampleConnection: Connection {
@@ -111,8 +111,8 @@ pub trait Handler<C: Connection> {
     ///
     ///The `send_buffer` argument is the free part of the send buffer. The
     ///handler can use the
-    ///[MessageFormatter](../core/msg/struct.MessageFormatter.html) to append
-    ///messages to the buffer. The caller must ensure that
+    ///[MessageFormatter](../common/core/msg/struct.MessageFormatter.html) to
+    ///append messages to the buffer. The caller must ensure that
     ///`send_buffer.len() <= conn.max_server_message_length()`, in other words:
     ///The send buffer must be large enough to hold at least one message
     ///completely.
@@ -146,7 +146,9 @@ pub trait Handler<C: Connection> {
     ///   `requested_value.is_some()`,
     ///
     ///2. report the property's current (or new) value (which may be different
-    ///   from the requested one) by calling [`MessageFormatter::publish_property(send_buffer, name, value)`](../core/msg/struct.MessageFormatter.html),
+    ///   from the requested one) by calling
+    ///   [`MessageFormatter::publish_property(send_buffer, name,
+    ///   value)`](../common/core/msg/struct.MessageFormatter.html),
     ///
     ///3. record a subscription to this property in `conn`. This means that,
     ///   whenever the property changes after this call, the handler shall send

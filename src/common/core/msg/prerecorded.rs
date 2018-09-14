@@ -16,21 +16,21 @@
 *
 ******************************************************************************/
 
-use core::{EncodeArgument, msg};
+use common::core::{EncodeArgument, msg};
 
 ///Convenience function for formatting a `core.pub` message into the given
 ///`buffer`. This is intended for usage by implementations of
-///[`vt6::server::Handler::handle_property()`](../../server/trait.Handler.html).
+///[`vt6::server::Handler::handle_property()`](../../../../server/trait.Handler.html).
 ///For example,
 ///
 ///```rust,ignore
-///let result = vt6::core::msg::prerecorded::publish_property(buf, "example.counter", &42);
+///let result = vt6::common::core::msg::prerecorded::publish_property(buf, "example.counter", &42);
 ///```
 ///
 ///is equivalent to:
 ///
 ///```rust,ignore
-///let mut f = vt6::core::msg::MessageFormatter::new(buf, "core.pub", 2);
+///let mut f = vt6::common::core::msg::MessageFormatter::new(buf, "core.pub", 2);
 ///f.add_argument("example.counter");
 ///f.add_argument(&42);
 ///let result = f.finalize();

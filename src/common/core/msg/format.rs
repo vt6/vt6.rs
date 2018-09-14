@@ -16,8 +16,8 @@
 *
 ******************************************************************************/
 
-use core::msg::*;
-use core::EncodeArgument;
+use common::core::msg::*;
+use common::core::EncodeArgument;
 
 ///A formatter for VT6 messages, as defined in
 ///[vt6/core1.0, section 2.1](https://vt6.io/std/core/1.0/#section-2-1).
@@ -61,7 +61,7 @@ impl<'b> MessageFormatter<'b> {
     ///`new()` or `format()`.
     pub fn add_argument<T: EncodeArgument + ?Sized>(&mut self, arg: &T) {
         if self.remaining_arguments == 0 {
-            panic!("vt6::core::msg::MessageFormatter::add_argument() called more often than expected");
+            panic!("vt6::common::core::msg::MessageFormatter::add_argument() called more often than expected");
         }
         self.remaining_arguments -= 1;
 
@@ -83,7 +83,7 @@ impl<'b> MessageFormatter<'b> {
     ///often as announced in `new()`) before this call.
     pub fn finalize(mut self) -> Result<usize, BufferTooSmallError> {
         if self.remaining_arguments != 0 {
-            panic!("vt6::core::msg::MessageFormatter::finalize() called before all arguments were added");
+            panic!("vt6::common::core::msg::MessageFormatter::finalize() called before all arguments were added");
         }
         self.add_char(b'}');
         if self.cursor > self.buffer.len() {

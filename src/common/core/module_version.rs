@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use core::EncodeArgument;
+use common::core::EncodeArgument;
 
 use libcore::fmt;
 

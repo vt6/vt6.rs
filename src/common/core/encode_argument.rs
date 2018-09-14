@@ -108,7 +108,7 @@ impl_EncodeArgument_for_integer!(isize, usize: u64);
 #[cfg(test)]
 mod tests {
 
-    use core::*;
+    use common::core::*;
     use libcore::str;
     use libcore::fmt::Display;
 
