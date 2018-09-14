@@ -16,12 +16,10 @@
 *
 ******************************************************************************/
 
-extern crate core as libcore;
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
+mod handler;
+pub use core::server::handler::*;
+mod tracker;
+pub use core::server::tracker::*;
 
-///Support for the [vt6/core module](https://vt6.io/std/core/).
-pub mod core;
-///Basic types and facilities for VT6 servers.
-pub mod server;
+#[cfg(test)]
+mod tests;

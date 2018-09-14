@@ -19,16 +19,22 @@
 use libcore::{self, fmt};
 use std;
 
+///Convenience functions for formatting often-used messages.
+pub mod prerecorded;
+
 mod format;
 pub use self::format::*;
 
 #[cfg(test)]
 mod tests;
 
-///An error type that is returned by functions on [MessageFormatter](struct.MessageFormatter.html).
-///It indicates that the target buffer was too small to contain the formatted message.
+///An error type that is returned by
+///[`MessageFormatter::finalize()`](struct.MessageFormatter.html). It indicates
+///that the target buffer was too small to contain the formatted message. The
+///contained `usize` value indicates how many bytes could not be written into
+///the target buffer.
 #[derive(Clone,Debug,PartialEq,Eq)]
-pub struct BufferTooSmallError;
+pub struct BufferTooSmallError(pub usize);
 
 ////////////////////////////////////////////////////////////////////////////////
 // struct ParseError
