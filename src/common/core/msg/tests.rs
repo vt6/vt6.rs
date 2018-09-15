@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use core::msg::*;
+use common::core::msg::*;
 
 #[test]
 fn test_message_parsing() {
@@ -146,7 +146,7 @@ fn test_message_formatting() {
 }
 
 fn make_example_message(buf: &mut [u8]) -> Result<usize, BufferTooSmallError> {
-    use core::ModuleVersion;
+    use common::core::ModuleVersion;
     let mut f = MessageFormatter::new(buf, "have", 2);
     f.add_argument("core");
     f.add_argument(&ModuleVersion { major: 1, minor: 0 });

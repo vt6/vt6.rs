@@ -23,8 +23,6 @@ pub use self::module_version::*;
 
 ///Parsing and serializing of VT6 messages.
 pub mod msg;
-///Server-side implementation of the [vt6/core module](https://vt6.io/std/core/).
-pub mod server;
 
 ///Checks if the argument is an identifier, as defined by
 ///[vt6/core1.0, section 1.4](https://vt6.io/std/core/1.0/#section-1-4).
@@ -32,7 +30,7 @@ pub mod server;
 ///This function can be used to validate module names.
 ///
 ///```
-///# use vt6::core::is_identifier;
+///# use vt6::common::core::is_identifier;
 ///assert_eq!(is_identifier("core"),          true);
 ///assert_eq!(is_identifier("core1"),         false);
 ///assert_eq!(is_identifier("scoped.ident"),  false);
@@ -74,7 +72,7 @@ fn is_ident_char(ch: char) -> bool {
 ///instead.
 ///
 ///```
-///# use vt6::core::is_scoped_identifier;
+///# use vt6::common::core::is_scoped_identifier;
 ///assert_eq!(is_scoped_identifier("core"),          None);
 ///assert_eq!(is_scoped_identifier("core.set"),      Some(("core", "set")));
 ///assert_eq!(is_scoped_identifier("what is: this"), None);
@@ -109,7 +107,7 @@ pub fn is_scoped_identifier(name: &str) -> Option<(&str, &str)> {
 ///[`is_scoped_identifier()`](fn.is_scoped_identifier.html) instead.
 ///
 ///```
-///# use vt6::core::is_message_type;
+///# use vt6::common::core::is_message_type;
 ///assert_eq!(is_message_type("core"),          None);
 ///assert_eq!(is_message_type("core.set"),      Some(("core", "set")));
 ///assert_eq!(is_message_type("what is: this"), None);

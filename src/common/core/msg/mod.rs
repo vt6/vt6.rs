@@ -16,8 +16,7 @@
 *
 ******************************************************************************/
 
-use libcore::{self, fmt};
-use std;
+use std::{self, fmt};
 
 ///Convenience functions for formatting often-used messages.
 pub mod prerecorded;
@@ -111,6 +110,7 @@ impl<'s> fmt::Display for ParseError<'s> {
     }
 }
 
+#[cfg(any(test, feature = "use_std"))]
 impl<'s> std::error::Error for ParseError<'s> {
     fn description(&self) -> &str {
         self.kind.to_str()
@@ -186,7 +186,7 @@ impl<'s> Cursor<'s> {
             let digit_str = unsafe {
                 //this is safe because we verified above that this range of
                 //bytes matches /[0-9]*/ and thus is in ASCII
-                libcore::str::from_utf8_unchecked(&self.buffer[start_cursor..self.offset])
+                std::str::from_utf8_unchecked(&self.buffer[start_cursor..self.offset])
             };
 
             //check that there are no leading zeroes
@@ -295,7 +295,7 @@ impl<'s> Iterator for MessageIterator<'s> {
     }
 }
 
-impl<'s> libcore::iter::ExactSizeIterator for MessageIterator<'s> {
+impl<'s> std::iter::ExactSizeIterator for MessageIterator<'s> {
     fn len(&self) -> usize {
         self.remaining_items
     }
@@ -317,7 +317,7 @@ impl<'s> libcore::iter::ExactSizeIterator for MessageIterator<'s> {
 ///[vt6/core1.0, section 2.1.3](https://vt6.io/std/core/1.0/#section-2-1-3).
 ///
 ///```
-///# use vt6::core::msg::*;
+///# use vt6::common::core::msg::*;
 ///let (msg, _) = Message::parse(b"{3|8:core.set,13:example.title,11:hello world,}").unwrap();
 ///assert_eq!(format!("{}", msg), r#"(core.set example.title "hello world")"#);
 ///```
@@ -344,8 +344,8 @@ impl<'s> Message<'s> {
         let type_name = match iter.next_or_error()? {
             None => return iter.cursor.error(ExpectedMessageType),
             Some(s) => {
-                use core::is_message_type;
-                match libcore::str::from_utf8(s).ok().and_then(is_message_type) {
+                use common::core::is_message_type;
+                match std::str::from_utf8(s).ok().and_then(is_message_type) {
                     Some(mt) => mt,
                     None => return iter.cursor.error(InvalidMessageType),
                 }
@@ -361,10 +361,10 @@ impl<'s> Message<'s> {
 
     ///Returns the message type, parsed into module name and name inside module
     ///in the same way as
-    ///[`vt6::core::is_message_type`](../fn.is_message_type.html).
+    ///[`vt6::common::core::is_message_type`](../fn.is_message_type.html).
     ///
     ///```
-    ///# use vt6::core::msg::Message;
+    ///# use vt6::common::core::msg::Message;
     ///let (msg, _) = Message::parse(b"{2|8:core.sub,7:foo.bar,}").unwrap();
     ///    // (core.sub foo.bar)
     ///assert_eq!(msg.type_name(), ("core", "sub"));
@@ -381,7 +381,7 @@ impl<'s> Message<'s> {
     ///include the message type name.)
     ///
     ///```
-    ///# use vt6::core::msg::Message;
+    ///# use vt6::common::core::msg::Message;
     ///let (msg, _) = Message::parse(b"{3|8:core.set,13:example.title,11:hello world,}").unwrap();
     ///    // (core.set example.title "hello world")
     ///let mut iter = msg.arguments();
@@ -418,7 +418,7 @@ impl<'s> fmt::Display for Message<'s> {
         for arg in self.arguments.clone() {
             let escaped = arg.iter().any(|&x| char_needs_escaping(x));
             f.write_str(if escaped { " \"" } else { " " })?;
-            for byte in arg.iter().flat_map(|&b| libcore::ascii::escape_default(b)) {
+            for byte in arg.iter().flat_map(|&b| std::ascii::escape_default(b)) {
                 (byte as char).fmt(f)?;
             }
             if escaped {

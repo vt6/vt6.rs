@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use core::msg;
+use common::core::msg;
 use server::*;
 
 ///A [handler](trait.Handler.html) that rejects all messages and requests sent

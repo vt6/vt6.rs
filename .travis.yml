@@ -19,9 +19,13 @@ matrix:
 
 script:
   - git clone https://github.com/vt6/conformance-tests ../conformance-tests
+  # first pass: with default features (i.e., with std)
   - cargo clean
   - cargo build
   - cargo test
+  # second pass: without default features (i.e., no_std)
+  - cargo clean
+  - cargo build --no-default-features
 
 after_success: |
   if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then

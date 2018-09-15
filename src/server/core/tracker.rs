@@ -16,13 +16,13 @@
 *
 ******************************************************************************/
 
-use std::collections::HashMap;
+use common::core::ModuleVersion;
 
-use core::ModuleVersion;
+use std::collections::HashMap;
 
 ///Tracks which modules a VT6 server has agreed to on a specific server
 ///connection. This type implements several methods required by [the
-///vt6::server::Connection trait](../../server/trait.Connection.html), so
+///vt6::server::Connection trait](../trait.Connection.html), so
 ///instances of it are commonly held by implementors of that trait. (See
 ///documentation over there.)
 #[derive(Clone, Default)]
@@ -37,7 +37,7 @@ impl Tracker {
     }
 
     ///This provides a general-purpose implementation for
-    ///[`Connection::enable_module()`](../../server/trait.Connection.html).
+    ///[`Connection::enable_module()`](../trait.Connection.html).
     pub fn enable_module(&mut self, name: &str, version: ModuleVersion) {
         match self.agreed_modules.get(name) {
             Some(_) => panic!("cannot enable_module({:?}) twice on the same connection", name),
@@ -46,7 +46,7 @@ impl Tracker {
     }
 
     ///This provides a general-purpose implementation for
-    ///[`Connection::is_module_enabled()`](../../server/trait.Connection.html).
+    ///[`Connection::is_module_enabled()`](../trait.Connection.html).
     pub fn is_module_enabled(&self, name: &str) -> Option<ModuleVersion> {
         self.agreed_modules.get(name).cloned()
     }

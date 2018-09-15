@@ -108,9 +108,9 @@ impl_EncodeArgument_for_integer!(isize, usize: u64);
 #[cfg(test)]
 mod tests {
 
-    use core::*;
-    use libcore::str;
-    use libcore::fmt::Display;
+    use common::core::*;
+    use std::str;
+    use std::fmt::Display;
 
     fn check_encodes_like_display<T: EncodeArgument + Display + ?Sized>(val: &T) {
         let size = val.get_size();

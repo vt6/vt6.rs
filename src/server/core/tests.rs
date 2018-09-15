@@ -18,7 +18,7 @@
 
 use std;
 
-use core::{self, msg};
+use common::core::{self, msg};
 use server::{self, EarlyHandler};
 
 #[test]
@@ -237,12 +237,12 @@ fn test_property_handling_invalid_negotiation() {
 }
 
 struct TestConnection {
-    tracker: core::server::Tracker,
+    tracker: server::core::Tracker,
     title: String,
 }
 
 impl TestConnection {
-    fn new() -> Self { TestConnection { tracker: core::server::Tracker::default(), title: "initial".into() } }
+    fn new() -> Self { TestConnection { tracker: server::core::Tracker::default(), title: "initial".into() } }
 
     fn handle_single_message(input: &str) -> Option<String> {
         Self::new().handle_message(input)
@@ -250,11 +250,10 @@ impl TestConnection {
 
     fn handle_message(&mut self, input: &str) -> Option<String> {
         let (message, _) = msg::Message::parse(input.as_bytes()).unwrap();
-        let handler = core::server::Handler::new(TestHandler {});
+        let handler = server::core::Handler::new(TestHandler {});
         let mut send_buf = vec![0;1024];
         let bytes_written = handler.handle(&message, self, &mut send_buf)?;
-        use libcore::str;
-        Some(str::from_utf8(&send_buf[0..bytes_written]).unwrap().into())
+        Some(std::str::from_utf8(&send_buf[0..bytes_written]).unwrap().into())
     }
 }
 
@@ -289,7 +288,7 @@ impl server::Handler<TestConnection> for TestHandler {
     }
 
     fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
-        use core::msg::prerecorded::publish_property;
+        use common::core::msg::prerecorded::publish_property;
         use server::Connection;
 
         //the "test.title" property accepts string values, but strings longer than 20 bytes are

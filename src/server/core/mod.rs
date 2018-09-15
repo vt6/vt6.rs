@@ -17,9 +17,12 @@
 ******************************************************************************/
 
 mod handler;
-pub use core::server::handler::*;
+pub use self::handler::*;
+
+#[cfg(any(test, feature = "use_std"))]
 mod tracker;
-pub use core::server::tracker::*;
+#[cfg(any(test, feature = "use_std"))]
+pub use self::tracker::*;
 
 #[cfg(test)]
 mod tests;
