@@ -61,12 +61,12 @@ impl<H> Handler<H> {
             return None;
         }
         for arg in args_iter.clone() {
-            let major_version = str::from_utf8(arg).ok()?.parse::<u16>().ok()?;
+            let major_version = u16::decode(arg)?;
             if major_version == 0 {
                 return None;
             }
         }
-        let major_versions_iter = args_iter.map(|arg| str::from_utf8(arg).unwrap().parse::<u16>().unwrap());
+        let major_versions_iter = args_iter.map(|arg| u16::decode(arg).unwrap());
         let check_want_result = self.check_want(module_name, major_versions_iter, conn);
 
         match check_want_result {

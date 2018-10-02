@@ -16,7 +16,7 @@
 *
 ******************************************************************************/
 
-use common::core::EncodeArgument;
+use common::core::{DecodeArgument, EncodeArgument};
 
 use std::fmt;
 
@@ -34,7 +34,7 @@ impl fmt::Display for ModuleVersion {
     }
 }
 
-//NOTE: Tests for this trait impl are in 
+//NOTE: Tests for this trait impl are in src/common/core/encode_argument.rs.
 impl EncodeArgument for ModuleVersion {
     fn get_size(&self) -> usize {
         self.major.get_size() + 1 + self.minor.get_size()
@@ -45,5 +45,21 @@ impl EncodeArgument for ModuleVersion {
         self.major.encode(&mut buf[0 .. major_size]);
         buf[major_size] = b'.';
         self.minor.encode(&mut buf[major_size+1 .. ]);
+    }
+}
+
+//NOTE: Tests for this trait impl are in src/common/core/{decode,encode}_argument.rs.
+impl DecodeArgument for ModuleVersion {
+    fn decode(arg: &[u8]) -> Option<ModuleVersion> {
+        let mut iter = arg.split(|&ch| ch == b'.');
+        //since we expect the format "X.Y", there must be exactly two subslices
+        //in this iterator
+        let major = u16::decode(iter.next()?)?;
+        let minor = u16::decode(iter.next()?)?;
+        if iter.next().is_some() {
+            None
+        } else {
+            Some(ModuleVersion { major: major, minor: minor })
+        }
     }
 }
