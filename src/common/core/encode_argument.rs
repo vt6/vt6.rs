@@ -40,6 +40,14 @@ impl EncodeArgument for str {
     fn encode(&self, buf: &mut[u8]) { buf.copy_from_slice(self.as_bytes()) }
 }
 
+impl EncodeArgument for bool {
+    fn get_size(&self) -> usize { 1 }
+    fn encode(&self, buf: &mut[u8]) {
+        assert_eq!(buf.len(), 1);
+        buf[0] = if *self { b't' } else { b'f' };
+    }
+}
+
 macro_rules! impl_EncodeArgument_for_integer {
     ($($t:ident),*: $t_conv:ident) => ($(
         //NOTE: Some of this is adapted from code in the Rust standard library
@@ -128,6 +136,19 @@ mod tests {
         let mut buf = vec![0u8; val.get_size()];
         val.encode(&mut buf);
         assert_eq!(buf, val);
+    }
+
+    #[test]
+    fn test_encode_bool() {
+        let val = true;
+        let mut buf = vec![0u8; val.get_size()];
+        val.encode(&mut buf);
+        assert_eq!(buf, b"t");
+
+        let val = false;
+        let mut buf = vec![0u8; val.get_size()];
+        val.encode(&mut buf);
+        assert_eq!(buf, b"f");
     }
 
     #[test]
