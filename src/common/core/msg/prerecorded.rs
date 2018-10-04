@@ -20,7 +20,8 @@ use common::core::{EncodeArgument, msg};
 
 ///Convenience function for formatting a `core.pub` message into the given
 ///`buffer`. This is intended for usage by implementations of
-///[`vt6::server::Handler::handle_property()`](../../../../server/trait.Handler.html).
+///[`vt6::server::Handler::handle_sub()`](../../../../server/trait.Handler.html) and
+///[`vt6::server::Handler::handle_set()`](../../../../server/trait.Handler.html).
 ///For example,
 ///
 ///```rust,ignore

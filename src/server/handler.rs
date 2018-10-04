@@ -161,8 +161,7 @@ pub trait Handler<C: Connection> {
     ///implementation shall check if `name` refers to a property in a module
     ///that the server has agreed to on this connection. If so, it shall
     ///
-    ///1. attempt to set the property's value to the requested value *if*
-    ///   `requested_value.is_some()`,
+    ///1. attempt to set the property's value to `requested_value`
     ///
     ///2. report the property's current (or new) value (which may be different
     ///   from the requested one) by calling
@@ -172,7 +171,7 @@ pub trait Handler<C: Connection> {
     ///The return value shall be either `None` (if `name` is not a valid
     ///property or the required modules were not yet agreed to), or the return
     ///value from `MessageFormatter::publish_property()`.
-    fn handle_set<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>;
+    fn handle_set<'c>(&self, name: &str, requested_value: &[u8], conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>;
 }
 
 ///A handler is the part of a VT6 server that processes VT6 messages. This trait

@@ -287,24 +287,33 @@ impl server::Handler<TestConnection> for TestHandler {
         }
     }
 
-    fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle_sub<'c>(&self, name: &str, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
+        use common::core::msg::prerecorded::publish_property;
+        use server::Connection;
+
+        if name == "test.title" && conn.is_module_enabled("test").is_some() {
+            publish_property(send_buffer, name, conn.title.as_str())
+        } else {
+            None
+        }
+    }
+
+    fn handle_set<'c>(&self, name: &str, requested_value: &[u8], conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
         use server::Connection;
 
         //the "test.title" property accepts string values, but strings longer than 20 bytes are
         //truncated to fit (so that we can have testcases where `requested_value != new_value`)
         if name == "test.title" && conn.is_module_enabled("test").is_some() {
-            if let Some(new_bytestr) = requested_value {
-                if let Ok(mut new_str) = std::str::from_utf8(new_bytestr) {
-                    if new_str.len() > 20 {
-                        let mut idx = 20;
-                        while !new_str.is_char_boundary(idx) {
-                            idx -= 1;
-                        }
-                        new_str = &new_str[0..idx];
+            if let Ok(mut new_str) = std::str::from_utf8(requested_value) {
+                if new_str.len() > 20 {
+                    let mut idx = 20;
+                    while !new_str.is_char_boundary(idx) {
+                        idx -= 1;
                     }
-                    conn.title = new_str.into();
+                    new_str = &new_str[0..idx];
                 }
+                conn.title = new_str.into();
             }
             publish_property(send_buffer, name, conn.title.as_str())
         } else {
