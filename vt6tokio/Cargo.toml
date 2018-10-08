@@ -4,4 +4,12 @@ version = "0.0.1"
 authors = ["Stefan Majewsky <majewsky@gmx.net>"]
 
 [dependencies]
-vt6 = { version = "0.0.1", path = "../vt6" }
+log = ">= 0.4"
+
+futures   = "^0.1.18"
+tokio     = "^0.1.7"
+tokio-uds = "^0.2.0"
+
+[dependencies.vt6]
+version = "0.0.1"
+path    = "../vt6"

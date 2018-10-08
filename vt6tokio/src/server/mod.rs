@@ -16,13 +16,5 @@
 *
 ******************************************************************************/
 
-#[macro_use]
-extern crate futures;
-#[macro_use]
-extern crate log;
-extern crate tokio;
-extern crate tokio_uds;
-extern crate vt6;
-
-///Implementation parts for VT6 servers.
-pub mod server;
+///Server-side implementation of the [vt6/core module](https://vt6.io/std/core/).
+pub mod core;

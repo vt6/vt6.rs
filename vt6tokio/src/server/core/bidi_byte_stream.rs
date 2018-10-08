@@ -16,13 +16,30 @@
 *
 ******************************************************************************/
 
-#[macro_use]
-extern crate futures;
-#[macro_use]
-extern crate log;
-extern crate tokio;
-extern crate tokio_uds;
-extern crate vt6;
+use std;
 
-///Implementation parts for VT6 servers.
-pub mod server;
+use tokio::prelude::*;
+use tokio_uds::UnixStream;
+use vt6::server as vt6s;
+
+use server::core::Connection;
+
+pub(crate) struct BidiByteStream<C: Connection> {
+    pub conn: C,
+    stream: UnixStream,
+}
+
+impl<C: Connection> BidiByteStream<C> {
+    pub fn new(conn: C, stream: UnixStream) -> Self {
+        unimplemented!() //TODO
+    }
+
+    pub fn poll<H: vt6s::EarlyHandler<C>>(&mut self, handler: &H) -> Poll<(), std::io::Error> {
+        unimplemented!() //TODO
+    }
+
+    pub fn append_to_send_buffer(&mut self, bytes: &[u8]) {
+        unimplemented!() //TODO
+    }
+}
+
