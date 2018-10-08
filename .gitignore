@@ -1,2 +1,4 @@
 target/
-Cargo.lock # not respected for libraries
+
+# not respected for libraries
+Cargo.lock
