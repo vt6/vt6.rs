@@ -1,7 +1,8 @@
 [package]
-name = "vt6"
+name    = "vt6"
 version = "0.0.1"
 authors = ["Stefan Majewsky <majewsky@gmx.net>"]
+license = "Apache-2.0"
 
 [features]
 default = ["use_std"]
