@@ -25,7 +25,7 @@ use vt6::server as vt6s;
 
 ///Extends the `vt6::server::Connection` trait with integration points for
 ///[`struct Server`](struct.Server.html).
-pub trait Connection: vt6s::Connection {
+pub trait Connection: vt6s::core::Connection {
     ///A reference to the application's shared state that all connections work
     ///on, including e.g. the terminal document. This type is typically an
     ///`Arc<Mutex<...>>`.
