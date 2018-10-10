@@ -236,13 +236,55 @@ fn test_property_handling_invalid_negotiation() {
     );
 }
 
+#[test]
+fn test_message_to_stdio() {
+    use server::core::StreamMode::*;
+    use server::Connection;
+
+    //success case
+    let mut conn = TestConnection::new();
+    assert_eq!(
+        conn.handle_message("{3|4:want,4:core,1:1,}"),
+        Some("{3|4:have,4:core,3:1.0,}".into()),
+    );
+    assert_eq!(conn.stream_state().mode, Message);
+    assert_eq!(
+        conn.handle_message("{1|13:core.to-stdio,}"),
+        Some("{1|13:core.to-stdio,}".into()),
+    );
+    let state = conn.stream_state();
+    assert_eq!(state.mode, Stdio);
+    //error case: cannot use core.to-stdio while not in message mode
+    assert_eq!(
+        conn.handle_message("{1|13:core.to-stdio,}"),
+        None,
+    );
+    //this also compares `state.entered` -- the state should not have been changed
+    assert_eq!(conn.stream_state(), state);
+
+    //error case: cannot use core.to-stdio without negotiating core first
+    assert_eq!(
+        TestConnection::handle_single_message("{1|13:core.to-stdio,}"),
+        None,
+    );
+
+}
+
 struct TestConnection {
     tracker: server::core::Tracker,
+    state: server::core::StreamState,
     title: String,
 }
 
 impl TestConnection {
-    fn new() -> Self { TestConnection { tracker: server::core::Tracker::default(), title: "initial".into() } }
+    fn new() -> Self {
+        use server::core::*;
+        TestConnection {
+            tracker: Tracker::default(),
+            state: StreamState::enter(StreamMode::Message),
+            title: "initial".into(),
+        }
+    }
 
     fn handle_single_message(input: &str) -> Option<String> {
         Self::new().handle_message(input)
@@ -258,15 +300,23 @@ impl TestConnection {
 }
 
 impl server::Connection for TestConnection {
-    fn max_server_message_length(&self) -> usize { 1024 }
-    fn max_client_message_length(&self) -> usize { 2048 }
-
     fn enable_module(&mut self, name: &str, version: core::ModuleVersion) {
         self.tracker.enable_module(name, version)
     }
     fn is_module_enabled(&self, name: &str) -> Option<core::ModuleVersion> {
         self.tracker.is_module_enabled(name)
     }
+    fn stream_state(&self) -> server::core::StreamState {
+        self.state
+    }
+    fn set_stream_state(&mut self, value: server::core::StreamState) {
+        self.state = value;
+    }
+}
+
+impl server::core::Connection for TestConnection {
+    fn max_server_message_length(&self) -> usize { 1024 }
+    fn max_client_message_length(&self) -> usize { 2048 }
 }
 
 ////////////////////////////////////////////////////////////////////////////

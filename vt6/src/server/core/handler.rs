@@ -19,7 +19,8 @@
 use std::str;
 
 use common::core::*;
-use server::{self, Connection};
+use server;
+use server::core::{Connection, StreamMode, StreamState};
 
 ///A [handler](../trait.Handler.html) that implements the [vt6/core
 ///module](https://vt6.io/std/core/).
@@ -152,6 +153,24 @@ impl<H> Handler<H> {
 
         (self as &server::Handler<C>).set_property(name, requested_value, conn, send_buffer)
     }
+
+    fn handle_to_stdio<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>
+        where H: server::Handler<C>
+    {
+        //expect no arguments
+        if msg.arguments().len() != 0 {
+            return None;
+        }
+        //extra sanity check: expect StreamMode::Message before switching to
+        //stdio (this is only defense in depth; we should not have to check this
+        //because Handler::handle() is only called while in message mode)
+        if conn.stream_state().mode != StreamMode::Message {
+            return None;
+        }
+
+        conn.set_stream_state(StreamState::enter(StreamMode::Stdio));
+        msg::MessageFormatter::new(send_buffer, "core.to-stdio", 0).finalize().ok()
+    }
 }
 
 impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<H> {
@@ -161,6 +180,7 @@ impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<H
             ("", "want")                 => self.handle_want(msg, conn, send_buffer),
             ("core", "sub") if has_core1 => self.subscribe_to_property(msg, conn, send_buffer),
             ("core", "set") if has_core1 => self.set_property(msg, conn, send_buffer),
+            ("core", "to-stdio") if has_core1 => self.handle_to_stdio(msg, conn, send_buffer),
             //forward unrecognized messages to next handler
             _ => self.next.handle(msg, conn, send_buffer),
         }

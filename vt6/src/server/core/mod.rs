@@ -18,6 +18,8 @@
 
 mod handler;
 pub use self::handler::*;
+mod state;
+pub use self::state::*;
 
 #[cfg(any(test, feature = "use_std"))]
 mod tracker;
@@ -26,3 +28,16 @@ pub use self::tracker::*;
 
 #[cfg(test)]
 mod tests;
+
+use server::Connection as ConnectionBase;
+
+///Extends [`vt6::server::Connection`](../trait.Connection.html) with methods
+///required by the [handler](struct.Handler.html) in this module.
+pub trait Connection: ConnectionBase {
+    ///Returns the maximum length in bytes of client messages that can be
+    ///received on this connection.
+    fn max_client_message_length(&self) -> usize;
+    ///Returns the maximum length in bytes of server messages that can be
+    ///sent on this connection.
+    fn max_server_message_length(&self) -> usize;
+}
