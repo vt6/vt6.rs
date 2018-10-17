@@ -16,6 +16,8 @@
 *
 ******************************************************************************/
 
+mod decode_argument;
+pub use self::decode_argument::*;
 mod encode_argument;
 pub use self::encode_argument::*;
 mod module_version;
