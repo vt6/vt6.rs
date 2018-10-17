@@ -37,7 +37,11 @@ impl<C: Connection> Handler<C> for RejectHandler {
         None
     }
 
-    fn handle_property<'c>(&self, _name: &str, _requested_value: Option<&[u8]>, _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
+    fn subscribe_to_property(&self, _name: &str, _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
+        None
+    }
+
+    fn set_property(&self, _name: &str, _requested_value: &[u8], _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
         None
     }
 }

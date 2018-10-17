@@ -138,19 +138,15 @@ pub trait Handler<C: Connection> {
     ///recurse into the next handler if there is one.
     fn can_use_module(&self, name: &str, major_version: u16, conn: &C) -> Option<u16>;
 
-    ///This method is called once for each `core.sub` or `core.set` message. The
+    ///This method is called once for each `core.sub` message. The
     ///implementation shall check if `name` refers to a property in a module
     ///that the server has agreed to on this connection. If so, it shall
     ///
-    ///1. attempt to set the property's value to the requested value *if*
-    ///   `requested_value.is_some()`,
-    ///
-    ///2. report the property's current (or new) value (which may be different
-    ///   from the requested one) by calling
+    ///1. report the property's current (or new) value by calling
     ///   [`MessageFormatter::publish_property(send_buffer, name,
     ///   value)`](../common/core/msg/struct.MessageFormatter.html),
     ///
-    ///3. record a subscription to this property in `conn`. This means that,
+    ///2. record a subscription to this property in `conn`. This means that,
     ///   whenever the property changes after this call, the handler shall send
     ///   a `core.pub` message using the `sender` that was supplied to the
     ///   handler's factory when instantiating this handler. This step can be
@@ -159,7 +155,23 @@ pub trait Handler<C: Connection> {
     ///The return value shall be either `None` (if `name` is not a valid
     ///property or the required modules were not yet agreed to), or the return
     ///value from `MessageFormatter::publish_property()`.
-    fn handle_property<'c>(&self, name: &str, requested_value: Option<&[u8]>, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>;
+    fn subscribe_to_property(&self, name: &str, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>;
+
+    ///This method is called once for each `core.set` message. The
+    ///implementation shall check if `name` refers to a property in a module
+    ///that the server has agreed to on this connection. If so, it shall
+    ///
+    ///1. attempt to set the property's value to `requested_value`
+    ///
+    ///2. report the property's current (or new) value (which may be different
+    ///   from the requested one) by calling
+    ///   [`MessageFormatter::publish_property(send_buffer, name,
+    ///   value)`](../common/core/msg/struct.MessageFormatter.html),
+    ///
+    ///The return value shall be either `None` (if `name` is not a valid
+    ///property or the required modules were not yet agreed to), or the return
+    ///value from `MessageFormatter::publish_property()`.
+    fn set_property(&self, name: &str, requested_value: &[u8], conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>;
 }
 
 ///A handler is the part of a VT6 server that processes VT6 messages. This trait
