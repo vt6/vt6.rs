@@ -120,7 +120,7 @@ impl<H> Handler<H> {
         }
     }
 
-    fn handle_sub<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>
+    fn subscribe_to_property<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>
     where H: server::Handler<C>
     {
         //expect exactly one argument (property name)
@@ -133,10 +133,10 @@ impl<H> Handler<H> {
             return None;
         }
 
-        (self as &server::Handler<C>).handle_sub(name, conn, send_buffer)
+        (self as &server::Handler<C>).subscribe_to_property(name, conn, send_buffer)
     }
 
-    fn handle_set<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>
+    fn set_property<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>
         where H: server::Handler<C>
     {
         //expects exactly two arguments (property name and requested value)
@@ -150,7 +150,7 @@ impl<H> Handler<H> {
             return None;
         }
 
-        (self as &server::Handler<C>).handle_set(name, requested_value, conn, send_buffer)
+        (self as &server::Handler<C>).set_property(name, requested_value, conn, send_buffer)
     }
 }
 
@@ -159,8 +159,8 @@ impl<C: Connection, H: server::Handler<C>> server::EarlyHandler<C> for Handler<H
         let has_core1 = conn.is_module_enabled("core").map_or(false, |version| version.major == 1);
         match msg.type_name() {
             ("", "want")                 => self.handle_want(msg, conn, send_buffer),
-            ("core", "sub") if has_core1 => self.handle_sub(msg, conn, send_buffer),
-            ("core", "set") if has_core1 => self.handle_set(msg, conn, send_buffer),
+            ("core", "sub") if has_core1 => self.subscribe_to_property(msg, conn, send_buffer),
+            ("core", "set") if has_core1 => self.set_property(msg, conn, send_buffer),
             //forward unrecognized messages to next handler
             _ => self.next.handle(msg, conn, send_buffer),
         }
@@ -180,18 +180,18 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
         }
     }
 
-    fn handle_sub(&self, name: &str, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+    fn subscribe_to_property(&self, name: &str, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
         if name == "core.server-msg-bytes-max" {
             publish_property(send_buffer, name, &conn.max_server_message_length())
         } else if name == "core.client-msg-bytes-max" {
             publish_property(send_buffer, name, &conn.max_client_message_length())
         } else {
-            self.next.handle_sub(name, conn, send_buffer)
+            self.next.subscribe_to_property(name, conn, send_buffer)
         }
     }
 
-    fn handle_set(&self, name: &str, requested_value: &[u8], conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+    fn set_property(&self, name: &str, requested_value: &[u8], conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
         // we do not support changing any properties yet, so just return the
         // current value
@@ -200,7 +200,7 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
         } else if name == "core.client-msg-bytes-max" {
             publish_property(send_buffer, name, &conn.max_client_message_length())
         } else {
-            self.next.handle_set(name, requested_value, conn, send_buffer)
+            self.next.set_property(name, requested_value, conn, send_buffer)
         }
     }
 }

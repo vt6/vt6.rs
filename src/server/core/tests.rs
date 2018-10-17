@@ -287,7 +287,7 @@ impl server::Handler<TestConnection> for TestHandler {
         }
     }
 
-    fn handle_sub(&self, name: &str, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
+    fn subscribe_to_property(&self, name: &str, conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
         use server::Connection;
 
@@ -298,7 +298,7 @@ impl server::Handler<TestConnection> for TestHandler {
         }
     }
 
-    fn handle_set(&self, name: &str, requested_value: &[u8], conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
+    fn set_property(&self, name: &str, requested_value: &[u8], conn: &mut TestConnection, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
         use server::Connection;
 
