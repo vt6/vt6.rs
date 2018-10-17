@@ -180,7 +180,7 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
         }
     }
 
-    fn handle_sub<'c>(&self, name: &str, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle_sub(&self, name: &str, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
         //FIXME we do not support subscribing to properties yet, so just return
         //the current value
@@ -193,7 +193,7 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
         }
     }
 
-    fn handle_set<'c>(&self, name: &str, requested_value: &[u8], conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle_set(&self, name: &str, requested_value: &[u8], conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
         //FIXME we do not support changing any properties yet, so just return
         //the current value

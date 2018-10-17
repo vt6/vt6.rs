@@ -37,11 +37,11 @@ impl<C: Connection> Handler<C> for RejectHandler {
         None
     }
 
-    fn handle_sub<'c>(&self, _name: &str, _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle_sub(&self, _name: &str, _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
         None
     }
 
-    fn handle_set<'c>(&self, _name: &str, _requested_value: &[u8], _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
+    fn handle_set(&self, _name: &str, _requested_value: &[u8], _conn: &mut C, _send_buffer: &mut [u8]) -> Option<usize> {
         None
     }
 }
