@@ -182,8 +182,6 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
 
     fn handle_sub(&self, name: &str, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
-        //FIXME we do not support subscribing to properties yet, so just return
-        //the current value
         if name == "core.server-msg-bytes-max" {
             publish_property(send_buffer, name, &conn.max_server_message_length())
         } else if name == "core.client-msg-bytes-max" {
@@ -195,8 +193,8 @@ impl<C: Connection, H: server::Handler<C>> server::Handler<C> for Handler<H> {
 
     fn handle_set(&self, name: &str, requested_value: &[u8], conn: &mut C, send_buffer: &mut [u8]) -> Option<usize> {
         use common::core::msg::prerecorded::publish_property;
-        //FIXME we do not support changing any properties yet, so just return
-        //the current value
+        // we do not support changing any properties yet, so just return the
+        // current value
         if name == "core.server-msg-bytes-max" {
             publish_property(send_buffer, name, &conn.max_server_message_length())
         } else if name == "core.client-msg-bytes-max" {
