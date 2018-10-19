@@ -16,13 +16,13 @@
 *
 ******************************************************************************/
 
-mod handler;
-pub use self::handler::*;
+#[macro_use]
+extern crate futures;
+#[macro_use]
+extern crate log;
+extern crate tokio;
+extern crate tokio_uds;
+extern crate vt6;
 
-#[cfg(any(test, feature = "use_std"))]
-mod tracker;
-#[cfg(any(test, feature = "use_std"))]
-pub use self::tracker::*;
-
-#[cfg(test)]
-mod tests;
+///Implementation parts for VT6 servers.
+pub mod server;

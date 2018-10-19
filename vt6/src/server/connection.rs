@@ -17,6 +17,7 @@
 ******************************************************************************/
 
 use common::core::ModuleVersion;
+use server::core::StreamState;
 
 ///Encapsulates the state of a server connection as far as required by [server
 ///handlers](trait.Handler.html). Specific handlers may require additional
@@ -29,12 +30,15 @@ use common::core::ModuleVersion;
 ///methods to it. Applications using no_std can provide their own non-allocating
 ///implementations of these methods instead.
 pub trait Connection {
-    ///Returns the maximum length in bytes of client messages that can be
-    ///received on this connection.
-    fn max_client_message_length(&self) -> usize;
-    ///Returns the maximum length in bytes of server messages that can be
-    ///sent on this connection.
-    fn max_server_message_length(&self) -> usize;
+    //NOTE: This trait is deliberately kept small. Most methods that you would
+    //add to this trait should go into the subtraits in the submodules
+    //(`vt6::server::$MODULE_NAME::Connection`).
+    //
+    //This trait only contains very few things:
+    //* The module tracking is here because this notion is tied to the eternal
+    //  messages that do not live in a particular module.
+    //* The stream state is here because the connection-level code
+    //  (e.g. vt6tokio::server::core::BidiByteStream) needs to access it.
 
     ///Record the fact that the server handler agrees to using the given module
     ///version on this connection.
@@ -51,4 +55,10 @@ pub trait Connection {
     ///When enable_module() has been called for this module before, returns the
     ///module version that has been agreed to. Returns None otherwise.
     fn is_module_enabled(&self, name: &str) -> Option<ModuleVersion>;
+
+    ///Returns the stream state of this connection. When the connection is first
+    ///constructed, the StreamState must start out in `StreamMode::Message`.
+    fn stream_state(&self) -> StreamState;
+    ///Updates the stream state of this connection.
+    fn set_stream_state(&mut self, new: StreamState);
 }
