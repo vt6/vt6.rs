@@ -23,6 +23,9 @@ mod reject;
 ///Server-side implementation of the [vt6/core module](https://vt6.io/std/core/).
 pub mod core;
 
+#[cfg(unix)]
+mod posix;
+
 pub use server::connection::Connection;
 pub use server::handler::*;
 pub use server::reject::RejectHandler;

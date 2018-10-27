@@ -74,10 +74,11 @@ impl<C: Connection> BidiByteStream<C> {
     fn poll_recv<H: vt6s::EarlyHandler<C>>(&mut self, handler: &H) -> Poll<(), std::io::Error> {
         use vt6::server::core::StreamMode::*;
         match self.conn.stream_state().mode {
-            Stdio   => self.poll_recv_stdio(),
-            Message => {
+            Stdio | Stdout => self.poll_recv_stdio(),
+            Stdin          => self.poll_recv_discard(),
+            Message        => {
                 match try_ready!(self.poll_recv_messages(handler)) {
-                    StreamModeChanged(false) => Ok(Async::Ready(())),
+                    StreamModeChanged(false) => Ok(Async::Ready(())), //EOF
                     //restart call to branch into a different poll_recv_*()
                     //depending on the new stream mode
                     StreamModeChanged(true)  => self.poll_recv(handler),
@@ -139,6 +140,21 @@ impl<C: Connection> BidiByteStream<C> {
         //the stdout that was received before the error or EOF
         if stdout.len() > 0 {
             self.conn.handle_standard_output(&stdout);
+        }
+
+        poll_result
+    }
+
+    fn poll_recv_discard(&mut self) -> Poll<(), std::io::Error> {
+        //This is for StreamMode::Stdin where the client is not allowed to send us anything.
+        //But regardless of that, we should drain the ReadHalf of the stream
+        let mut stdout = Vec::new();
+        let poll_result = self.recv.poll_stdout_into(&mut stdout);
+
+        if stdout.len() > 0 {
+            let s = String::from_utf8_lossy(&stdout);
+            error!("unexpected output received on connection {} in state {:?}: {:?}",
+                self.conn.id(), self.conn.stream_state().mode, &s);
         }
 
         poll_result

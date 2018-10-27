@@ -151,8 +151,9 @@ impl<C: Connection, H: vt6s::EarlyHandler<C> + Send + Sync> Future for Server<C,
             Ok(Async::Ready(Some(event))) => {
                 match event {
                     IncomingEvent::UserInput(text) => {
+                        use vt6::server::core::StreamMode::{Stdin, Stdio};
                         let mut search_result = self.streams.iter_mut()
-                            .filter(|s| s.conn.stream_state().mode == vt6s::core::StreamMode::Stdio)
+                            .filter(|s| { let m = s.conn.stream_state().mode; m == Stdio || m == Stdin })
                             .max_by_key(|s| s.conn.stream_state().entered);
                         if let Some(stream) = search_result {
                             stream.append_to_send_buffer(text.as_bytes());

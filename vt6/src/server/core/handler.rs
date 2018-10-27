@@ -21,6 +21,10 @@ use std::str;
 use common::core::*;
 use server;
 use server::core::{Connection, StreamMode, StreamState};
+use server::Handler as HandlerTrait;
+
+#[cfg(unix)]
+use server::posix::Handler as PosixHandler;
 
 ///A [handler](../trait.Handler.html) that implements the [vt6/core
 ///module](https://vt6.io/std/core/).
@@ -38,13 +42,19 @@ use server::core::{Connection, StreamMode, StreamState};
 ///[EarlyHandler trait](../trait.EarlyHandler.html), but every handler
 ///succeeding it implements the [Handler trait](../trait.Handler.html).
 pub struct Handler<H> {
+    #[cfg(unix)]
+    next: PosixHandler<H>,
+    #[cfg(not(unix))]
     next: H,
 }
 
 impl<H> Handler<H> {
     ///Constructor. The argument is the next handler after this handler.
     pub fn new(next: H) -> Self {
-        Handler { next: next }
+        #[cfg(unix)]
+        return Handler { next: PosixHandler::new(next) };
+        #[cfg(not(unix))]
+        return Handler { next: next };
     }
 
     fn handle_want<C: Connection>(&self, msg: &msg::Message, conn: &mut C, send_buffer: &mut [u8]) -> Option<usize>

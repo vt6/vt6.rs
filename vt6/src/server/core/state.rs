@@ -24,6 +24,10 @@ use std::time::Instant;
 pub enum StreamMode {
     Message,
     Stdio,
+    #[cfg(unix)]
+    Stdin,
+    #[cfg(unix)]
+    Stdout,
 }
 
 ///The state of a bidirectional byte-stream, as specified in
