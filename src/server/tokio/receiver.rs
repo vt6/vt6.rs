@@ -6,7 +6,6 @@
 
 use crate::server;
 use crate::server::tokio as my;
-use crate::server::Dispatch;
 use futures::future::{AbortRegistration, Abortable};
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
@@ -38,7 +37,7 @@ pub(crate) fn spawn_receiver<A: server::Application>(
             //attempt to fill the buffer
             if let Err(e) = reader.read_buf(&mut buf).await {
                 let n = server::Notification::ConnectionIOError(e.into());
-                dispatch.dispatch().notify(&n);
+                dispatch.app.notify(&n);
                 if let Some(conn) = dispatch.connection_mut(conn_id).alive() {
                     conn.set_state(server::ConnectionState::Teardown);
                 }

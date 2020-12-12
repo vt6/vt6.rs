@@ -5,7 +5,7 @@
 *******************************************************************************/
 
 use vt6::common::core::msg;
-use vt6::server::{Application, Connection, Dispatch, HandshakeHandler, Handler, MessageHandler};
+use vt6::server::{Application, Connection, Dispatch, Handler, HandshakeHandler, MessageHandler, Notification};
 
 fn main() -> std::io::Result<()> {
     belog::init();
@@ -16,7 +16,7 @@ fn main() -> std::io::Result<()> {
         .enable_all()
         .build()?;
 
-    let dispatch = vt6::server::tokio::Dispatch::<Dummy>::new("/tmp/vt6-tokio-server")?;
+    let dispatch = vt6::server::tokio::Dispatch::<Dummy>::new("/tmp/vt6-tokio-server", Dummy)?;
     rt.block_on(async move { dispatch.run_listener().await })
 }
 
@@ -25,29 +25,22 @@ struct Dummy;
 
 impl Application for Dummy {
     type MessageConnector = Dummy;
-    type StdinConnector = Dummy;
     type StdoutConnector = Dummy;
     type MessageHandler = LoggingHandler<vt6::server::reject::MessageHandler>;
     type HandshakeHandler = LoggingHandler<vt6::server::reject::HandshakeHandler>;
-}
 
-impl vt6::server::MessageConnector for Dummy {
-    fn new() -> Self {
-        Self
+    fn notify(&self, n: &Notification) {
+        if n.is_error() {
+            log::error!("{}", n);
+        } else {
+            log::info!("{}", n);
+        }
     }
 }
 
-impl vt6::server::StdinConnector for Dummy {
-    fn new() -> Self {
-        Self
-    }
-}
+impl vt6::server::MessageConnector for Dummy {}
 
-impl vt6::server::StdoutConnector for Dummy {
-    fn new() -> Self {
-        Self
-    }
-}
+impl vt6::server::StdoutConnector for Dummy {}
 
 ///This handler is a minimal useful example of how handlers can be combined through chaining,
 ///similar to the middlewares that exist in most HTTP server frameworks.
@@ -57,20 +50,16 @@ struct LoggingHandler<H> {
 }
 
 impl<A: Application, H: Handler<A>> Handler<A> for LoggingHandler<H> {
-    fn handle<D: Dispatch<A>>(
-        &self,
-        msg: &msg::Message,
-        conn: &mut Connection<A, D>,
-    ) {
-        log::info!("received message {} in connection state {}", msg, conn.state().type_name());
+    fn handle<D: Dispatch<A>>(&self, msg: &msg::Message, conn: &mut Connection<A, D>) {
+        log::info!(
+            "received message {} in connection state {}",
+            msg,
+            conn.state().type_name()
+        );
         self.next.handle(msg, conn)
     }
 
-    fn handle_error<D: Dispatch<A>>(
-        &self,
-        e: &msg::ParseError,
-        conn: &mut Connection<A, D>,
-    ) {
+    fn handle_error<D: Dispatch<A>>(&self, e: &msg::ParseError, conn: &mut Connection<A, D>) {
         log::error!("parse error: {} at offset {}", e.kind, e.offset);
         self.next.handle_error(e, conn)
     }

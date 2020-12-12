@@ -6,7 +6,6 @@
 
 use crate::server;
 use crate::server::tokio as my;
-use crate::server::Dispatch;
 use futures::future::{AbortRegistration, Abortable};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -87,7 +86,7 @@ pub(crate) fn spawn_transmitter<A: server::Application>(
                     Some(ref buf) => {
                         if let Err(e) = writer.write_all(buf.filled()).await {
                             let n = server::Notification::ConnectionIOError(e.into());
-                            dispatch.dispatch().notify(&n);
+                            dispatch.app.notify(&n);
                             if let Some(conn) = dispatch.connection_mut(conn_id).alive() {
                                 conn.set_state(server::ConnectionState::Teardown);
                             }

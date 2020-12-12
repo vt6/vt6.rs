@@ -4,10 +4,11 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
-///A notification that originates somewhere within this module. Notifications are sent to
-///application-level code through the notify() function on [trait Dispatch](trait.Dispatch.html)
-///where they can be logged or displayed to the user. Notifications are used only for informational
-///messages and non-fatal errors.
+///A notification that originates somewhere within this module.
+///
+///Notifications are sent to application-level code through the notify() function on [trait
+///Dispatch](trait.Dispatch.html) where they can be logged or displayed to the user. Notifications
+///are used only for informational messages and non-fatal errors.
 ///
 ///## Compatibility warning
 ///

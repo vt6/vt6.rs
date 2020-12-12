@@ -5,41 +5,32 @@
 *******************************************************************************/
 
 /*!
-Since servers need to do a lot of bookkeeping that is not plausible in a no_std context, this
-entire module requires the "use_std" feature.
+Since servers need to do a lot of bookkeeping that is not feasible in a no_std context, this entire
+module requires the "use_std" feature.
 
-Besides the infrastructure in this module, the following pieces need to be supplied to obtain a
-complete VT6 server implementation:
+This module (`vt6::server`) contains some basic types and most importantly a bunch of traits for
+the various bits and pieces of a VT6 server. Most of the submodules (e.g. `vt6::server::core`)
+implement generic support for a specific VT6 module.
 
-1. A type implementing [trait Dispatch](trait.Dispatch.html). The implementation of this depends on
-   which IO library you use. This crate includes an implementation for use with the Tokio library
-   in the [vt6::server::tokio](tokio/index.html) submodule if the "use_tokio" feature is enabled on
-   the crate. Similar implementations for other IO libraries may be added in the future, but you
-   can always provide your own implementations if the ones supplied with this crate don't fit your
-   use case.
+To get started, you will need to build a type that implements
+[trait Application](trait.Application.html). This trait contains several methods that you need to
+implement, and has a bunch of associated types that you also need to provide. If you follow the
+trail of breadcrumbs from `trait Application`, you'll see everything that you need to choose or
+implement.
 
-2. A set of connector types, i.e. types implementing
-   [trait MessageConnector](trait.MessageConnector.html),
-   [trait StdinConnector](trait.StdinConnector.html) and
-   [trait StdoutConnector](trait.StdoutConnector.html) respectively. One Connector instance is
-   maintained for each connected client socket in the respective socket mode. The Connector allows
-   the code in this crate to call into application-specific logic in response upon receiving
-   messages or data from the client. The implementation of the Connector types is therefore highly
-   application-dependent and typically not supplied by a library.
-
-3. A type implementing [trait Handler](trait.Handler.html). This crate includes various modular
-   handler types, each implementing support for one specific VT6 module, that can be chained
-   together (similar to middlewares in a HTTP server) to create a complete handler type. Custom
-   handler types can be mixed and matched with those in the library if non-standard VT6 modules
-   need to be supported. Most handler types impose additional trait bounds on the Connector types
-   to forward decoded messages etc. into application logic.
+Once you have a type implementing [trait Application](trait.Application.html), you just need to
+choose an implementation of [trait Dispatch](trait.Dispatch.html) to go with it. The bird's eye
+perspective is that `trait Application` integrates with your application, whereas `trait Dispatch`
+integrates with the IO library or framework that you use. This crate provides implementations of
+`trait Dispatch` for some common IO libraries; see documentation on
+[trait Dispatch](trait.Dispatch.html) for details.
 
 The "tokio_server" example in this crate provides a minimal working example of all those pieces
 working together.
 */
 
-mod connector;
-pub use connector::*;
+mod application;
+pub use application::*;
 mod connection;
 pub use connection::*;
 mod dispatch;

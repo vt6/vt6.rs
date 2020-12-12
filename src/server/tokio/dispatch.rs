@@ -7,7 +7,6 @@
 use crate::common::core::msg;
 use crate::server;
 use crate::server::tokio as my;
-use crate::server::Dispatch as _;
 use futures::future::{AbortHandle, AbortRegistration};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
@@ -38,14 +37,16 @@ pub(crate) struct InnerDispatch<A: server::Application> {
     //functions, this is usually guaranteed by passing refs to Connection instances around (which
     //can only be obtained by holding the `self.pool` lock).
     path: std::path::PathBuf,
+    pub(crate) app: A,
     pool: RwLock<ConnectionPool<A>>,
     tx: RwLock<HashMap<u64, TxConnector>>,
 }
 
 impl<A: server::Application> InnerDispatch<A> {
-    fn new(path: std::path::PathBuf) -> Arc<Self> {
+    fn new(path: std::path::PathBuf, app: A) -> Arc<Self> {
         Arc::new(InnerDispatch {
             path,
+            app,
             pool: RwLock::new(ConnectionPool {
                 conns: HashMap::new(),
                 next_connection_id: 0,
@@ -143,7 +144,7 @@ impl<A: server::Application> InnerDispatch<A> {
                 pool.conns.remove(&conn_id);
                 self.tx.write().unwrap().remove(&conn_id);
                 let n = server::Notification::ConnectionClosed;
-                self.dispatch().notify(&n);
+                self.app.notify(&n);
             }
         }
 
@@ -184,14 +185,19 @@ impl<'a, A: server::Application> Drop for ConnectionRefMut<'a, A> {
 ////////////////////////////////////////////////////////////////////////////////
 // public API
 
+///An implementation of [trait Dispatch](../trait.Dispatch.html) using the
+///[Tokio library](https://tokio.rs/).
 #[derive(Clone)]
 pub struct Dispatch<A: server::Application>(Arc<InnerDispatch<A>>);
 
 impl<A: server::Application> Dispatch<A> {
-    pub fn new(path: impl Into<std::path::PathBuf>) -> std::io::Result<Self> {
-        Ok(Dispatch(InnerDispatch::new(path.into())))
+    ///Creates a new instance. The server socket will be opened at the given path.
+    pub fn new(path: impl Into<std::path::PathBuf>, app: A) -> std::io::Result<Self> {
+        Ok(Dispatch(InnerDispatch::new(path.into(), app)))
     }
 
+    ///Runs the dispatch's event loop. Run this with `tokio::spawn()` or
+    ///`tokio::runtime::Runtime::block_on()` etc.
     pub async fn run_listener(&self) -> std::io::Result<()> {
         let listener = tokio::net::UnixListener::bind(&self.0.path)?;
 
@@ -201,7 +207,7 @@ impl<A: server::Application> Dispatch<A> {
             let (conn_id, rx_abort, tx_abort, tx_notify) = self.0.create_connection_object();
             my::spawn_receiver(self.0.clone(), rx_abort, conn_id, stream_reader);
             my::spawn_transmitter(self.0.clone(), tx_abort, conn_id, stream_writer, tx_notify);
-            self.notify(&server::Notification::ConnectionOpened);
+            self.0.app.notify(&server::Notification::ConnectionOpened);
         }
     }
 }
@@ -209,10 +215,8 @@ impl<A: server::Application> Dispatch<A> {
 impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
     type ConnectionID = u64;
 
-    fn notify(&self, n: &server::Notification) {
-        //TODO allow to bubble up notifications into application level
-        let class = if n.is_error() { "ERROR" } else { "INFO" };
-        eprint!("{}: {}\n", class, n);
+    fn application(&self) -> &A {
+        &self.0.app
     }
 
     fn enqueue_broadcast(&self, _action: Box<dyn Fn(&mut server::Connection<A, Self>)>) {

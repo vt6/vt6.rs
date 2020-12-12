@@ -16,7 +16,7 @@ pub enum ConnectionState<A: server::Application> {
     ///This socket is in msgio mode because of a successful client-hello message.
     Msgio(A::MessageConnector),
     ///This socket is in stdin mode because of a successful stdin-hello message.
-    Stdin(A::StdinConnector),
+    Stdin,
     ///This socket is in stdout mode because of a successful stdout-hello message.
     Stdout(A::StdoutConnector),
     ///This socket is currently being torn down. No further IO shall be performed on the socket and
@@ -35,7 +35,7 @@ impl<A: server::Application> ConnectionState<A> {
         match self {
             Self::Handshake => "Handshake",
             Self::Msgio(_) => "Msgio",
-            Self::Stdin(_) => "Stdin",
+            Self::Stdin => "Stdin",
             Self::Stdout(_) => "Stdout",
             Self::Teardown => "Teardown",
         }
@@ -63,6 +63,8 @@ pub struct Connection<A: server::Application, D: server::Dispatch<A>> {
 }
 
 impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
+    ///Creates a new connection. This interface is usually only called by the Dispatch when
+    ///accepting a client connection to the server socket.
     pub fn new(dispatch: D, id: D::ConnectionID) -> Self {
         Self {
             dispatch,
@@ -71,23 +73,34 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
         }
     }
 
+    ///Returns a reference to the dispatch. Handlers that only get a reference to a Connection
+    ///instance can use this method to talk to the dispatch.
     pub fn dispatch(&self) -> D {
         self.dispatch.clone()
     }
 
+    ///Returns the internal ID of this connection. The ID is unique within the Dispatch instance
+    ///that manages this connection.
     pub fn id(&self) -> D::ConnectionID {
         self.id.clone()
     }
 
+    ///Returns the current state of this connection.
     pub fn state(&self) -> &ConnectionState<A> {
         &self.state
     }
 
+    ///Switch this connection into a different state. Handshake handlers can use this method to set
+    ///the socket from handshake mode into msgio, stdin or stdout mode. Also, any handler wishing
+    ///to dismantle the connection (e.g. because of a fatal error) can use this method to set the
+    ///socket in teardown mode, which will cause the dispatch to shut down the connection.
     pub fn set_state(&mut self, state: ConnectionState<A>) {
         self.state = state;
     }
 
-    pub fn msgio_connector(&mut self) -> Option<&mut A::MessageConnector> {
+    ///A shorthand for extracting the MessageConnector out of `self.state()`. Returns `None` when
+    ///not in msgio mode.
+    pub fn message_connector(&mut self) -> Option<&mut A::MessageConnector> {
         use ConnectionState::*;
         match self.state {
             Msgio(ref mut c) => Some(c),
@@ -95,6 +108,18 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
         }
     }
 
+    ///A shorthand for extracting the StdoutConnector out of `self.state()`. Returns `None` when
+    ///not in stdout mode.
+    pub fn stdout_connector(&mut self) -> Option<&mut A::StdoutConnector> {
+        use ConnectionState::*;
+        match self.state {
+            Stdout(ref mut c) => Some(c),
+            _ => None,
+        }
+    }
+
+    ///A shorthand for `self.dispatch().enqueue_message(self, action)`. See
+    ///[over here](trait.Dispatch.html#tymethod.enqueue_message) for details.
     pub fn enqueue_message<F>(&mut self, action: F)
     where
         F: Fn(&mut [u8]) -> Result<usize, msg::BufferTooSmallError>,
@@ -102,13 +127,15 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
         self.dispatch().enqueue_message(self, action)
     }
 
+    ///Handle data sent by the client. This interface is called by the Dispatch whenever data has
+    ///been read from the client socket associated with this Connection instance.
     pub fn handle_incoming<B: ReceiveBuffer>(&mut self, buf: &mut B) {
         if !buf.contents().is_empty() {
             use ConnectionState::*;
             match self.state {
                 Handshake => self.handle_incoming_msgio::<B, A::HandshakeHandler>(buf),
                 Msgio(_) => self.handle_incoming_msgio::<B, A::MessageHandler>(buf),
-                Stdin(_) => unimplemented!(),
+                Stdin => unimplemented!(),
                 Stdout(_) => unimplemented!(),
                 Teardown => {}
             }
@@ -140,10 +167,10 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
                     Some(offset) => offset + 1,   //`+1` compensates the effect of .skip(1)
                     None => buf.contents().len(), //no `{` at all -> everything is garbage
                 };
-                self.dispatch
-                    .notify(&server::Notification::IncomingBytesDiscarded(
-                        &buf.contents()[0..bytes_to_discard],
-                    ));
+                let n = server::Notification::IncomingBytesDiscarded(
+                    &buf.contents()[0..bytes_to_discard],
+                );
+                self.dispatch.application().notify(&n);
                 buf.discard(bytes_to_discard);
             }
         }
