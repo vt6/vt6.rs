@@ -5,6 +5,20 @@ authors = ["Stefan Majewsky <majewsky@gmx.net>"]
 license = "Apache-2.0"
 edition = "2018"
 
+[dependencies]
+
+# for the "use_tokio" feature
+tokio   = { version = "^0.3", optional = true }
+futures = { version = "^0.3", optional = true }
+bytes   = { version = "*",    optional = true }
+
+[dev-dependencies]
+
+# for the examples
+log = { version = "^0.4" }
+belog = "*"
+
 [features]
 default = ["use_std"]
 use_std = []
+use_tokio = ["use_std", "bytes", "futures", "tokio", "tokio/io-util", "tokio/net", "tokio/rt", "tokio/sync"]
