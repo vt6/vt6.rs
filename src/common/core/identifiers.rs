@@ -6,6 +6,8 @@
 
 use super::*;
 
+//TODO Once <https://github.com/rust-lang/rust/issues/51999> stabilizes, make all the parse() functions const to enable 'static identifier values.
+
 ////////////////////////////////////////////////////////////////////////////////
 // ClientID
 

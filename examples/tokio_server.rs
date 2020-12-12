@@ -5,6 +5,7 @@
 *******************************************************************************/
 
 use vt6::common::core::msg;
+use vt6::server::{Application, Connection, Dispatch, HandshakeHandler, Handler, MessageHandler};
 
 fn main() -> std::io::Result<()> {
     belog::init();
@@ -22,12 +23,12 @@ fn main() -> std::io::Result<()> {
 #[derive(Clone, Default)]
 struct Dummy;
 
-impl vt6::server::Application for Dummy {
+impl Application for Dummy {
     type MessageConnector = Dummy;
     type StdinConnector = Dummy;
     type StdoutConnector = Dummy;
-    type MessageHandler = Dummy;
-    type HandshakeHandler = Dummy;
+    type MessageHandler = LoggingHandler<vt6::server::reject::MessageHandler>;
+    type HandshakeHandler = LoggingHandler<vt6::server::reject::HandshakeHandler>;
 }
 
 impl vt6::server::MessageConnector for Dummy {
@@ -48,30 +49,33 @@ impl vt6::server::StdoutConnector for Dummy {
     }
 }
 
-impl<A: vt6::server::Application> vt6::server::Handler<A> for Dummy {
-    fn handle<D: vt6::server::Dispatch<A>>(
+///This handler is a minimal useful example of how handlers can be combined through chaining,
+///similar to the middlewares that exist in most HTTP server frameworks.
+#[derive(Default)]
+struct LoggingHandler<H> {
+    next: H,
+}
+
+impl<A: Application, H: Handler<A>> Handler<A> for LoggingHandler<H> {
+    fn handle<D: Dispatch<A>>(
         &self,
         msg: &msg::Message,
-        conn: &mut vt6::server::Connection<A, D>,
+        conn: &mut Connection<A, D>,
     ) {
-        log::info!("received message: {}", msg);
-        let d = conn.dispatch().clone();
-        d.enqueue_message(conn, |buf| {
-            let mut f = msg::MessageFormatter::new(buf, "beep", 1);
-            f.add_argument(&42usize);
-            f.finalize()
-        });
+        log::info!("received message {} in connection state {}", msg, conn.state().type_name());
+        self.next.handle(msg, conn)
     }
 
-    fn handle_error<D: vt6::server::Dispatch<A>>(
+    fn handle_error<D: Dispatch<A>>(
         &self,
         e: &msg::ParseError,
-        _conn: &mut vt6::server::Connection<A, D>,
+        conn: &mut Connection<A, D>,
     ) {
-        log::error!("parse error: {} at offset {}", e.kind, e.offset)
+        log::error!("parse error: {} at offset {}", e.kind, e.offset);
+        self.next.handle_error(e, conn)
     }
 }
 
-impl vt6::server::MessageHandler<Dummy> for Dummy {}
+impl<A: Application, H: MessageHandler<A>> MessageHandler<A> for LoggingHandler<H> {}
 
-impl vt6::server::HandshakeHandler<Dummy> for Dummy {}
+impl<A: Application, H: HandshakeHandler<A>> HandshakeHandler<A> for LoggingHandler<H> {}

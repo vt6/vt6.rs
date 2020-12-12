@@ -49,6 +49,9 @@ pub use handler::*;
 mod notification;
 pub use notification::*;
 
+///Handlers implementing the default behavior for malformed client messages.
+pub mod reject;
+
 #[cfg(feature = "use_tokio")]
 ///An implementation of a server listener using the [Tokio library](https://tokio.rs/).
 pub mod tokio;

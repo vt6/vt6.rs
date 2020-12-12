@@ -12,7 +12,7 @@ use crate::server;
 pub enum ConnectionState<A: server::Application> {
     ///The client socket has just been opened and we're waiting for the first message from the
     ///client before choosing the actual socket type.
-    WaitingForClientHello,
+    Handshake,
     ///This socket is in msgio mode because of a successful client-hello message.
     Msgio(A::MessageConnector),
     ///This socket is in stdin mode because of a successful stdin-hello message.
@@ -33,7 +33,7 @@ impl<A: server::Application> ConnectionState<A> {
     ///```
     pub fn type_name(&self) -> &'static str {
         match self {
-            Self::WaitingForClientHello => "WaitingForClientHello",
+            Self::Handshake => "Handshake",
             Self::Msgio(_) => "Msgio",
             Self::Stdin(_) => "Stdin",
             Self::Stdout(_) => "Stdout",
@@ -67,7 +67,7 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
         Self {
             dispatch,
             id,
-            state: ConnectionState::WaitingForClientHello,
+            state: ConnectionState::Handshake,
         }
     }
 
@@ -95,11 +95,18 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
         }
     }
 
+    pub fn enqueue_message<F>(&mut self, action: F)
+    where
+        F: Fn(&mut [u8]) -> Result<usize, msg::BufferTooSmallError>,
+    {
+        self.dispatch().enqueue_message(self, action)
+    }
+
     pub fn handle_incoming<B: ReceiveBuffer>(&mut self, buf: &mut B) {
         if !buf.contents().is_empty() {
             use ConnectionState::*;
             match self.state {
-                WaitingForClientHello => self.handle_incoming_msgio::<B, A::HandshakeHandler>(buf),
+                Handshake => self.handle_incoming_msgio::<B, A::HandshakeHandler>(buf),
                 Msgio(_) => self.handle_incoming_msgio::<B, A::MessageHandler>(buf),
                 Stdin(_) => unimplemented!(),
                 Stdout(_) => unimplemented!(),
