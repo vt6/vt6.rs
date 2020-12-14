@@ -31,13 +31,12 @@ impl<A: server::Application> server::Handler<A> for MessageHandler {
     ) {
         use crate::common::core::MessageType::*;
         if let Scoped(mt) = msg.parsed_type() {
-            conn.enqueue_message(|buf| {
-                let mut f = msg::MessageFormatter::new(buf, "have", 1);
-                f.add_argument(&mt.module());
-                f.finalize()
-            })
+            conn.enqueue_message(&crate::msg::HaveNot {
+                module: mt.module(),
+            });
         } else {
-            conn.enqueue_message(|buf| msg::MessageFormatter::new(buf, "nope", 0).finalize())
+            //TODO if it's a `want` message, answer with a negative `have`
+            conn.enqueue_message(&crate::msg::Nope)
         }
     }
 
@@ -46,7 +45,7 @@ impl<A: server::Application> server::Handler<A> for MessageHandler {
         _err: &msg::ParseError,
         conn: &mut server::Connection<A, D>,
     ) {
-        conn.enqueue_message(|buf| msg::MessageFormatter::new(buf, "nope", 0).finalize())
+        conn.enqueue_message(&crate::msg::Nope)
     }
 }
 

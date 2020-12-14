@@ -29,7 +29,7 @@ pub trait Dispatch<A: server::Application>: Clone + Sized {
     ///`&mut Connection` for the connection where the input was received, but some messages require
     ///sending responses to other connections, too (e.g. when a `core1.set` message sets a property
     ///value, all other connections with a subscription on the same property may need to be
-    ///notified). But the Dispatch cannot have a method like
+    ///notified). But the dispatch cannot have a method like
     ///
     ///```ignore
     ///fn connections_mut(&self) -> impl Iterator<Item=&mut server::Connection<A, Self>>;
@@ -37,7 +37,7 @@ pub trait Dispatch<A: server::Application>: Clone + Sized {
     ///
     ///for the handler to call, since the handler already has one of the `&mut Connection` in
     ///question and we cannot get a second mutable reference to it. What the handler actually does
-    ///is to enqueue a broadcast action. The Dispatch takes ownership of the action and executes it
+    ///is to enqueue a broadcast action. The dispatch takes ownership of the action and executes it
     ///as soon as all `&mut Connection` references have been returned to it.
     fn enqueue_broadcast(&self, action: Box<dyn Fn(&mut server::Connection<A, Self>)>);
 
@@ -45,9 +45,11 @@ pub trait Dispatch<A: server::Application>: Clone + Sized {
     ///
     ///You need a `&mut Connection` reference to call this, so this method can easily be called
     ///inside [handlers](trait.Handler.html). If you want to send messages while not handling a
-    ///client message, you need to `enqueue_broadcast()` your action and have the Dispatch get back
+    ///client message, you need to `enqueue_broadcast()` your action and have the dispatch get back
     ///to you when it's ready to give you a `&mut Connection`.
-    fn enqueue_message<F>(&self, conn: &mut server::Connection<A, Self>, action: F)
-    where
-        F: Fn(&mut [u8]) -> Result<usize, msg::BufferTooSmallError>;
+    fn enqueue_message<M: msg::EncodeMessage>(
+        &self,
+        conn: &mut server::Connection<A, Self>,
+        msg: &M,
+    );
 }

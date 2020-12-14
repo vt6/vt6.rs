@@ -10,6 +10,8 @@
 pub mod client;
 ///Common types and definitions that can be used both by VT6 servers and clients.
 pub mod common;
+///Decoded representations of common VT6 messages.
+pub mod msg;
 #[cfg(feature = "use_std")]
 ///Implementation parts for VT6 servers (terminals or shell wrappers proxying as a terminal).
 pub mod server;

@@ -120,11 +120,8 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
 
     ///A shorthand for `self.dispatch().enqueue_message(self, action)`. See
     ///[over here](trait.Dispatch.html#tymethod.enqueue_message) for details.
-    pub fn enqueue_message<F>(&mut self, action: F)
-    where
-        F: Fn(&mut [u8]) -> Result<usize, msg::BufferTooSmallError>,
-    {
-        self.dispatch().enqueue_message(self, action)
+    pub fn enqueue_message<M: msg::EncodeMessage>(&mut self, msg: &M) {
+        self.dispatch().enqueue_message(self, msg)
     }
 
     ///Handle data sent by the client. This interface is called by the Dispatch whenever data has

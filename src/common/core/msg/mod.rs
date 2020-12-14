@@ -7,7 +7,9 @@
 use crate::common::core::MessageType;
 
 mod format;
-pub use self::format::*;
+pub use format::*;
+mod traits;
+pub use traits::*;
 
 #[cfg(test)]
 mod tests;
