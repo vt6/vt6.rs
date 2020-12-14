@@ -36,7 +36,7 @@ impl<'b> MessageFormatter<'b> {
 
         let len = num_arguments + 1; // + 1 for the message type
         let mut f = MessageFormatter {
-            buffer,
+            buffer: crop_buffer_to_max_msglen(buffer),
             cursor: 0,
             remaining_arguments: len,
         };
@@ -109,5 +109,15 @@ impl<'b> MessageFormatter<'b> {
             arg.encode(&mut self.buffer[self.cursor..new_cursor]);
         }
         self.cursor = new_cursor;
+    }
+}
+
+//This ensures that we never render a message > 1024 bytes. Overlong messages are forbidden by
+//[vt6/foundation, sect. 3.1.2].
+fn crop_buffer_to_max_msglen(buf: &mut [u8]) -> &mut [u8] {
+    if buf.len() <= 1024 {
+        buf
+    } else {
+        &mut buf[..1024]
     }
 }

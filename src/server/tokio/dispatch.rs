@@ -243,7 +243,7 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
         let mut enqueued = false;
         let filled_bufs = connector.bufs.iter_mut().filter(|b| b.filled_len() > 0);
         if let Some(send_buffer) = filled_bufs.last() {
-            enqueued = send_buffer.fill(|buf| action(crop_to_1024(buf))).is_ok();
+            enqueued = send_buffer.fill(|buf| action(buf)).is_ok();
         }
 
         //if it doesn't work, try to fit the message into the send buffer directly following that
@@ -258,20 +258,10 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
             };
             //if the fill() errors out this time, it's because the rendered message is
             //legimitately too long, so it's a good time to panic
-            send_buffer.fill(|buf| action(crop_to_1024(buf))).unwrap();
+            send_buffer.fill(|buf| action(buf)).unwrap();
         }
 
         //wake up the transmitter job if necessary
         connector.notify.notify_one();
-    }
-}
-
-//This ensures that we never render a message > 1024 bytes. Overlong messages are forbidden by
-//[vt6/foundation, sect. 3.1.2].
-fn crop_to_1024(buf: &mut [u8]) -> &mut [u8] {
-    if buf.len() <= 1024 {
-        buf
-    } else {
-        &mut buf[..1024]
     }
 }

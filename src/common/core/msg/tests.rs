@@ -138,15 +138,23 @@ fn test_message_formatting() {
 
     //test a message with a large number of arguments
     let size = {
-        let mut f = MessageFormatter::new(&mut buf, "foo.bar", 1000);
-        for _ in 0..1000 {
+        let mut f = MessageFormatter::new(&mut buf, "foo.bar", 250);
+        for _ in 0..250 {
             f.add_argument(&0);
         }
         f.finalize().unwrap()
     };
-    //prefix "{1001|7:foo.bar;" and suffix "}" have 17 bytes in total, and each
+    //prefix "{251|7:foo.bar;" and suffix "}" have 16 bytes in total, and each
     //argument "1:0;" has 4 bytes
-    assert_eq!(size, 4017);
+    assert_eq!(size, 1016);
+
+    //test a message exceeding the hard 1024-byte limit
+    let mut f = MessageFormatter::new(&mut buf, "foo.bar", 500);
+    for _ in 0..500 {
+        f.add_argument(&0);
+    }
+    let required_size = 16 + 4 * 500;
+    assert_eq!(f.finalize(), Err(BufferTooSmallError(required_size - 1024)));
 }
 
 fn make_example_message(buf: &mut [u8]) -> Result<usize, BufferTooSmallError> {
