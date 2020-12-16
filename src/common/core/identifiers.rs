@@ -244,6 +244,20 @@ impl<'a> ModuleIdentifier<'a> {
     pub fn major_version(&'a self) -> u16 {
         self.major_version
     }
+
+    ///Adds a minor version to this identifier to obtain a full module version.
+    ///
+    ///```
+    ///# use vt6::common::core::*;
+    ///let module = ModuleIdentifier::parse("core3").unwrap();
+    ///assert_eq!(format!("{}", module.with_minor_version(4)), "core3.4");
+    ///```
+    pub fn with_minor_version(&'a self, minor_version: u16) -> ModuleVersion<'a> {
+        ModuleVersion {
+            module: self.clone(),
+            minor_version,
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,29 +269,27 @@ impl<'a> ModuleIdentifier<'a> {
 ///
 ///Instances of this type can be created through a successful `parse()` or
 ///[`decode_argument()`](trait.DecodeArgument.html).
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ModuleVersion<'a> {
-    source: &'a str,
-    name: Identifier<'a>,
-    major_version: u16,
+    module: ModuleIdentifier<'a>,
     minor_version: u16,
-}
-
-impl<'a> core::fmt::Debug for ModuleVersion<'a> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "ModuleVersion::parse({:?})", self.source)
-    }
 }
 
 impl<'a> core::fmt::Display for ModuleVersion<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        self.source.fmt(f)
+        write!(f, "{}.{}", self.module, self.minor_version)
     }
 }
 
-impl<'a> EncodedArgument for ModuleVersion<'a> {
-    fn encoded(&self) -> &[u8] {
-        self.source.as_bytes()
+impl<'a> EncodeArgument for ModuleVersion<'a> {
+    fn get_size(&self) -> usize {
+        self.module.get_size() + 1 + self.minor_version.get_size()
+    }
+    fn encode(&self, buf: &mut [u8]) {
+        let s = self.module.get_size();
+        self.module.encode(&mut buf[0..s]);
+        buf[s] = b'.';
+        self.minor_version.encode(&mut buf[(s + 1)..]);
     }
 }
 
@@ -290,39 +302,20 @@ impl<'a> ModuleVersion<'a> {
         let ident = ModuleIdentifier::parse(left)?;
         let minor = u16::decode_argument(right.as_bytes())?;
         Some(ModuleVersion {
-            source: input,
-            name: ident.name,
-            major_version: ident.major_version,
+            module: ident,
             minor_version: minor,
         })
     }
 
-    ///Returns the string representation of this module identifier. This is the same string that
-    ///was originally passed into parse().
-    pub fn as_str(&self) -> &str {
-        self.source
-    }
-
-    ///Returns the name of the identified module, without the major version.
+    ///Returns the name of the identified module, including the major version.
     ///
     ///```
     ///# use vt6::common::core::*;
     ///let module = ModuleVersion::parse("core3.2").unwrap();
-    ///assert_eq!(module.name().as_str(), "core");
+    ///assert_eq!(module.module().as_str(), "core3");
     ///```
-    pub fn name(&'a self) -> Identifier<'a> {
-        self.name
-    }
-
-    ///Returns the major version of the identified module.
-    ///
-    ///```
-    ///# use vt6::common::core::*;
-    ///let module = ModuleVersion::parse("core3.2").unwrap();
-    ///assert_eq!(module.major_version(), 3);
-    ///```
-    pub fn major_version(&'a self) -> u16 {
-        self.major_version
+    pub fn module(&'a self) -> ModuleIdentifier<'a> {
+        self.module.clone()
     }
 
     ///Returns the minor version of the identified module.
