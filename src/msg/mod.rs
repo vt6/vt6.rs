@@ -4,7 +4,7 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
-use crate::common::core::{msg, MessageType, ModuleIdentifier};
+use crate::common::core::{msg, DecodeArgument, MessageType, ModuleIdentifier};
 
 ///A negative `have` message.
 ///[\[vt6/foundation, sect. 4.2\]](https://vt6.io/std/foundation/#section-4-2)
@@ -18,7 +18,7 @@ impl<'a> msg::DecodeMessage<'a> for HaveNot<'a> {
             return None;
         }
         let mut iter = msg.arguments();
-        let module = ModuleIdentifier::parse(std::str::from_utf8(iter.next()?).ok()?)?;
+        let module = ModuleIdentifier::decode_argument(iter.next()?)?;
         if iter.next().is_some() {
             return None;
         }
@@ -27,7 +27,7 @@ impl<'a> msg::DecodeMessage<'a> for HaveNot<'a> {
 }
 
 impl<'a> msg::EncodeMessage for HaveNot<'a> {
-    fn encode_message(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError> {
+    fn encode(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError> {
         let mut f = msg::MessageFormatter::new(buf, "have", 1);
         f.add_argument(&self.module);
         f.finalize()
@@ -51,7 +51,7 @@ impl<'a> msg::DecodeMessage<'a> for Nope {
 }
 
 impl msg::EncodeMessage for Nope {
-    fn encode_message(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError> {
+    fn encode(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError> {
         msg::MessageFormatter::new(buf, "nope", 0).finalize()
     }
 }

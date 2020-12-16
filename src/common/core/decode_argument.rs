@@ -8,23 +8,21 @@
 ///
 ///This is the inverse of [`trait EncodeArgument`](trait.EncodeArgument.html).
 ///
-///A notable difference is that this trait is *not* implemented for strings and
-///bytestrings because neither `[u8]` nor `str` are `Sized`. To decode an
-///argument into a `&str`, use `std::str::from_utf8()`. If `&[u8]` is the
-///desired value type, no decoding is required.
+///This trait is not implemented for `&[u8]` because no decoding is required to
+///reach this value type.
 ///
-///The trait implementations for booleans and integers match the formats defined
-///for basic property types in
-///[vt6/core1.0, section 2.4](https://vt6.io/std/core/1.0/#section-2-4).
-pub trait DecodeArgument: Sized {
+///The trait implementations for booleans, integers and strings match the
+///formats defined for basic property types in
+///[vt6/core1.0, section 2.1](https://vt6.io/std/core/1.0/#section-2-1).
+pub trait DecodeArgument<'a>: Sized {
     ///Parses a bytestring `s` (which is interpreted as an argument in a VT6
     ///message) into a value of this type. If parsing succeeds, `Some` is
     ///returned, otherwise `None` is returned.
-    fn decode(arg: &[u8]) -> Option<Self>;
+    fn decode_argument(arg: &'a [u8]) -> Option<Self>;
 }
 
-impl DecodeArgument for bool {
-    fn decode(arg: &[u8]) -> Option<Self> {
+impl<'a> DecodeArgument<'a> for bool {
+    fn decode_argument(arg: &'a [u8]) -> Option<Self> {
         match arg {
             b"t" => Some(true),
             b"f" => Some(false),
@@ -33,11 +31,17 @@ impl DecodeArgument for bool {
     }
 }
 
-macro_rules! impl_DecodeArgument_for_integer {
-    ($($t:ident),*) => ($(
+impl<'a> DecodeArgument<'a> for &'a str {
+    fn decode_argument(arg: &'a [u8]) -> Option<Self> {
+        core::str::from_utf8(arg).ok()
+    }
+}
 
-        impl DecodeArgument for $t {
-            fn decode(arg: &[u8]) -> Option<Self> {
+macro_rules! impl_DecodeArgument_for_integer {
+    ($($t:ty),*) => ($(
+
+        impl<'a> DecodeArgument<'a> for $t {
+            fn decode_argument(arg: &'a [u8]) -> Option<Self> {
                 //forbid leading zeroes
                 if arg.len() == 0 {
                     return None;
@@ -53,7 +57,26 @@ macro_rules! impl_DecodeArgument_for_integer {
     )*);
 }
 
+macro_rules! impl_DecodeArgument_via_parse_from_string {
+    ($($t:ty),*) => ($(
+
+        impl<'a> DecodeArgument<'a> for $t {
+            fn decode_argument(arg: &'a [u8]) -> Option<Self> {
+                Self::parse(core::str::from_utf8(arg).ok()?)
+            }
+        }
+    )*);
+}
+
 impl_DecodeArgument_for_integer!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
+impl_DecodeArgument_via_parse_from_string!(
+    crate::common::core::ClientID<'a>,
+    crate::common::core::Identifier<'a>,
+    crate::common::core::MessageType<'a>,
+    crate::common::core::ModuleIdentifier<'a>,
+    crate::common::core::ModuleVersion<'a>,
+    crate::common::core::ScopedIdentifier<'a>
+);
 
 #[cfg(test)]
 mod tests {
@@ -62,13 +85,13 @@ mod tests {
 
     #[test]
     fn test_decode_bool() {
-        assert_eq!(bool::decode(b"t"), Some(true));
-        assert_eq!(bool::decode(b"f"), Some(false));
-        assert_eq!(bool::decode(b"unknown"), None);
-        assert_eq!(bool::decode(b"1"), None);
-        assert_eq!(bool::decode(b"0"), None);
-        assert_eq!(bool::decode(b"true"), None);
-        assert_eq!(bool::decode(b"false"), None);
+        assert_eq!(bool::decode_argument(b"t"), Some(true));
+        assert_eq!(bool::decode_argument(b"f"), Some(false));
+        assert_eq!(bool::decode_argument(b"unknown"), None);
+        assert_eq!(bool::decode_argument(b"1"), None);
+        assert_eq!(bool::decode_argument(b"0"), None);
+        assert_eq!(bool::decode_argument(b"true"), None);
+        assert_eq!(bool::decode_argument(b"false"), None);
     }
 
     //NOTE: The tests below only test error cases (where `decode(...)` returns
@@ -87,18 +110,18 @@ mod tests {
         ];
 
         for input in invalid_inputs {
-            assert_eq!(None, i8::decode(input));
-            assert_eq!(None, u8::decode(input));
-            assert_eq!(None, i16::decode(input));
-            assert_eq!(None, u16::decode(input));
-            assert_eq!(None, i32::decode(input));
-            assert_eq!(None, u32::decode(input));
-            assert_eq!(None, i64::decode(input));
-            assert_eq!(None, u64::decode(input));
-            assert_eq!(None, i128::decode(input));
-            assert_eq!(None, u128::decode(input));
-            assert_eq!(None, isize::decode(input));
-            assert_eq!(None, usize::decode(input));
+            assert_eq!(None, i8::decode_argument(input));
+            assert_eq!(None, u8::decode_argument(input));
+            assert_eq!(None, i16::decode_argument(input));
+            assert_eq!(None, u16::decode_argument(input));
+            assert_eq!(None, i32::decode_argument(input));
+            assert_eq!(None, u32::decode_argument(input));
+            assert_eq!(None, i64::decode_argument(input));
+            assert_eq!(None, u64::decode_argument(input));
+            assert_eq!(None, i128::decode_argument(input));
+            assert_eq!(None, u128::decode_argument(input));
+            assert_eq!(None, isize::decode_argument(input));
+            assert_eq!(None, usize::decode_argument(input));
         }
     }
 }

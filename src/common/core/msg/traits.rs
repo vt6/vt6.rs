@@ -25,5 +25,5 @@ pub trait DecodeMessage<'a>: Sized {
 pub trait EncodeMessage {
     ///As the signature suggests, implementations of this method commonly use a
     ///[MessageFormatter](struct.MessageFormatter.html) to do the encoding work.
-    fn encode_message(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError>;
+    fn encode(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError>;
 }

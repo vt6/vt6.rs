@@ -14,9 +14,8 @@ use super::*;
 ///A client ID, as defined by
 ///[vt6/foundation, section 2.6](https://vt6.io/std/foundation/#section-2-6).
 ///
-///Because of the associated lifetime, this type does not implement DecodeArgument. Use
-///ClientID::parse() instead. Instances of this type can only be created through a successful
-///ClientID::parse().
+///Instances of this type can be created through a successful `parse()` or
+///[`decode_argument()`](trait.DecodeArgument.html).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ClientID<'a>(&'a str);
 
@@ -81,9 +80,8 @@ fn is_client_id_char(ch: char) -> bool {
 ///An identifier, as defined by
 ///[vt6/foundation, section 2.1](https://vt6.io/std/foundation/#section-2-1).
 ///
-///Because of the associated lifetime, this type does not implement DecodeArgument. Use
-///Identifier::parse() instead. Instances of this type can only be created through a successful
-///Identifier::parse().
+///Instances of this type can be created through a successful `parse()` or
+///[`decode_argument()`](trait.DecodeArgument.html).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Identifier<'a>(&'a str);
 
@@ -152,7 +150,7 @@ fn parse_ident_or_module_ident(input: &str) -> Option<(Identifier<'_>, Option<u1
 
     //the rest of the input must be the major version
     let (name_str, version_str) = input.split_at(start_idx_of_version);
-    let version = u16::decode(version_str.as_bytes())?;
+    let version = u16::decode_argument(version_str.as_bytes())?;
     if version == 0 {
         return None;
     }
@@ -178,8 +176,8 @@ fn is_digit(ch: char) -> bool {
 ///as defined by [vt6/foundation, section 2.4](https://vt6.io/std/foundation/#section-2-4). For
 ///example, in the scoped identifier `core1.set`, the module identifier is `core1`.
 ///
-///Because of the associated lifetime, this type does not implement DecodeArgument. Use
-///ModuleIdentifier::parse() instead.
+///Instances of this type can be created through a successful `parse()` or
+///[`decode_argument()`](trait.DecodeArgument.html).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ModuleIdentifier<'a> {
     source: &'a str,
@@ -255,8 +253,8 @@ impl<'a> ModuleIdentifier<'a> {
 ///argument of a positive `have` message, as defined by
 ///[vt6/foundation, section 4.2](https://vt6.io/std/foundation/#section-4-2).
 ///
-///Because of the associated lifetime, this type does not implement DecodeArgument. Use
-///ModuleIdentifier::parse() instead.
+///Instances of this type can be created through a successful `parse()` or
+///[`decode_argument()`](trait.DecodeArgument.html).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ModuleVersion<'a> {
     source: &'a str,
@@ -290,7 +288,7 @@ impl<'a> ModuleVersion<'a> {
         let dot_idx = input.find('.')?;
         let (left, right) = (&input[0..dot_idx], &input[dot_idx + 1..]);
         let ident = ModuleIdentifier::parse(left)?;
-        let minor = u16::decode(right.as_bytes())?;
+        let minor = u16::decode_argument(right.as_bytes())?;
         Some(ModuleVersion {
             source: input,
             name: ident.name,
@@ -345,8 +343,8 @@ impl<'a> ModuleVersion<'a> {
 ///A scoped identifier, as defined by
 ///[vt6/foundation, section 2.4](https://vt6.io/std/foundation/#section-2-4).
 ///
-///Because of the associated lifetime, this type does not implement DecodeArgument. Use
-///ScopedIdentifier::parse() instead.
+///Instances of this type can be created through a successful `parse()` or
+///[`decode_argument()`](trait.DecodeArgument.html).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ScopedIdentifier<'a> {
     source: &'a str,
@@ -422,8 +420,8 @@ impl<'a> ScopedIdentifier<'a> {
 ///A message type, as defined by
 ///[vt6/foundation, section 2.4](https://vt6.io/std/foundation/#section-2-4).
 ///
-///Because of the associated lifetime, this type does not implement DecodeArgument. Use
-///MessageType::parse() instead.
+///Instances of this type can be created through a successful `parse()` or
+///[`decode_argument()`](trait.DecodeArgument.html).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum MessageType<'a> {
     Init,

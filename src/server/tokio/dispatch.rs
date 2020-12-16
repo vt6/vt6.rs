@@ -244,7 +244,7 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
         let mut enqueued = false;
         let filled_bufs = connector.bufs.iter_mut().filter(|b| b.filled_len() > 0);
         if let Some(send_buffer) = filled_bufs.last() {
-            enqueued = send_buffer.fill(|buf| msg.encode_message(buf)).is_ok();
+            enqueued = send_buffer.fill(|buf| msg.encode(buf)).is_ok();
         }
 
         //if it doesn't work, try to fit the message into the send buffer directly following that
@@ -259,7 +259,7 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
             };
             //if the fill() errors out this time, it's because the rendered message is
             //legimitately too long, so it's a good time to panic
-            send_buffer.fill(|buf| msg.encode_message(buf)).unwrap();
+            send_buffer.fill(|buf| msg.encode(buf)).unwrap();
         }
 
         //wake up the transmitter job if necessary

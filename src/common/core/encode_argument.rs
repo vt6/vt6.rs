@@ -154,7 +154,7 @@ mod tests {
     use std::str;
 
     fn check_encodes_like_display_and_decodes<
-        T: EncodeArgument + DecodeArgument + Display + Debug + Eq,
+        T: EncodeArgument + for<'a> DecodeArgument<'a> + Display + Debug + Eq,
     >(
         val: &T,
     ) {
@@ -164,7 +164,7 @@ mod tests {
         let mut buf = vec![0u8; size];
         val.encode(&mut buf);
 
-        assert_eq!(Some(val), T::decode(&buf).as_ref());
+        assert_eq!(Some(val), T::decode_argument(&buf).as_ref());
     }
 
     fn check_encodes_like_display<T: EncodeArgument + Display + ?Sized>(val: &T) {
