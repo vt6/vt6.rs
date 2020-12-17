@@ -74,6 +74,30 @@ fn is_client_id_char(ch: char) -> bool {
     (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')
 }
 
+//Like a ClientID, but owns the allocation backing the contained string. This type is internal for
+//now, and appears e.g. in vt6::server::ClientIdentity. It must be defined in this module to be
+//able to construct ClientID instances without re-parsing.
+#[derive(Clone)]
+pub(crate) struct OwnedClientID(String);
+
+impl<'a, 'b> From<&'a ClientID<'b>> for OwnedClientID {
+    fn from(id: &'a ClientID<'b>) -> OwnedClientID {
+        OwnedClientID(id.0.into())
+    }
+}
+
+impl core::fmt::Debug for OwnedClientID {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "ClientID::parse({:?})", &self.0)
+    }
+}
+
+impl OwnedClientID {
+    pub(crate) fn as_ref(&self) -> ClientID<'_> {
+        ClientID(&self.0)
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Identifier
 

@@ -31,6 +31,8 @@ working together.
 
 mod application;
 pub use application::*;
+mod auth;
+pub use auth::*;
 mod connection;
 pub use connection::*;
 mod dispatch;

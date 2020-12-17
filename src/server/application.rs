@@ -57,5 +57,30 @@ pub trait Application: Clone + Send + Sync + 'static {
     type MessageHandler: server::MessageHandler<Self>;
     type HandshakeHandler: server::HandshakeHandler<Self>;
 
+    ///Hook for the application to receive miscellaneous informational messages or non-fatal
+    ///errors.
     fn notify(&self, n: &server::Notification);
+
+    ///Register a new client with the terminal. This does not return an `Option<>` since the
+    ///terminal is not allowed to refuse new clients. The handler generating this call will have
+    ///made sure that the prospective client is below the requesting client, i.e. that the
+    ///requesting client's ID is a prefix of `i.client_id()`, and that `i.client_id()` is not yet
+    ///in use.
+    fn register_client(&self, i: server::ClientIdentity) -> server::ClientCredentials;
+    ///Authorize a client's attempt to handshake for an msgio socket. Since each client ID is only
+    ///supposed to map to exactly one msgio socket, implementations SHALL NOT authorize the same
+    ///secret multiple times.
+    fn authorize_client(&self, secret: &str) -> Option<server::ClientIdentity>;
+    ///Returns information about the client with the given ID if it has been registered with the
+    ///terminal.
+    fn find_client(&self, id: crate::common::core::ClientID<'_>) -> Option<server::ClientIdentity>;
+
+    ///Authorize a client's attempt to handshake for an stdin socket. To ensure that each screen
+    ///has at most one stdin socket connected to it, implementations SHALL NOT authorize the same
+    ///secret multiple times.
+    fn authorize_stdin(&self, secret: &str) -> Option<server::ScreenIdentity>;
+    ///Authorize a client's attempt to handshake for an stdout socket. To ensure that each screen
+    ///has at most one stdout socket connected to it, implementations SHALL NOT authorize the same
+    ///secret multiple times.
+    fn authorize_stdout(&self, secret: &str) -> Option<server::ScreenIdentity>;
 }
