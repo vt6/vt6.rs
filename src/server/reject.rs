@@ -5,6 +5,8 @@
 *******************************************************************************/
 
 use crate::common::core::msg;
+use crate::common::core::msg::DecodeMessage;
+use crate::msg::{Have, Nope, Want};
 use crate::server;
 
 ///A [MessageHandler](../trait.MessageHandler.html) that provides the default behavior for unknown
@@ -29,14 +31,15 @@ impl<A: server::Application> server::Handler<A> for MessageHandler {
         msg: &msg::Message,
         conn: &mut server::Connection<A, D>,
     ) {
-        use crate::common::core::MessageType::*;
-        if let Scoped(mt) = msg.parsed_type() {
-            conn.enqueue_message(&crate::msg::HaveNot {
-                module: mt.module(),
-            });
-        } else {
-            //TODO if it's a `want` message, answer with a negative `have`
-            conn.enqueue_message(&crate::msg::Nope)
+        //answer everything with a negative `have` if possible, or with a `nope` if not
+        use crate::common::core::MessageType;
+        match msg.parsed_type() {
+            MessageType::Scoped(mt) => conn.enqueue_message(&Have::NotThisModule(mt.module())),
+            MessageType::Want => match Want::decode_message(msg) {
+                Some(Want(m)) => conn.enqueue_message(&Have::NotThisModule(m)),
+                None => conn.enqueue_message(&Nope),
+            },
+            _ => conn.enqueue_message(&Nope),
         }
     }
 
