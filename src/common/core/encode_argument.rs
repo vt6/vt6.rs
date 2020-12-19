@@ -12,6 +12,11 @@
 ///match the formats defined for basic property types in
 ///[vt6/core1.0, section 2.4](https://vt6.io/std/core/1.0/#section-2-4).
 ///
+///The generic trait implementation for `Option<>` encodes `Some(val)` just like
+///`val` and `None` as an empty byte string. Because trait implementations in
+///Rust must be unambiguous, there is no trait implementation for `Option<T>`,
+///only for `Option<&T>`. If you have an `Option<T>`, use `Option::as_ref`.
+///
 ///When the implementing type already contains a string representation of its encoding,
 ///[`trait EncodedArgument`](trait.EncodedArgument.html) can be implemented instead.
 pub trait EncodeArgument {
@@ -43,7 +48,7 @@ pub trait EncodedArgument {
 
 impl<T> EncodeArgument for T
 where
-    T: EncodedArgument,
+    T: EncodedArgument + ?Sized,
 {
     fn get_size(&self) -> usize {
         self.encoded().len()
@@ -78,6 +83,23 @@ impl EncodeArgument for bool {
     fn encode(&self, buf: &mut [u8]) {
         assert_eq!(buf.len(), 1);
         buf[0] = if *self { b't' } else { b'f' };
+    }
+}
+
+impl<'a, T> EncodeArgument for Option<&'a T>
+where
+    T: EncodeArgument + ?Sized,
+{
+    fn get_size(&self) -> usize {
+        match *self {
+            None => 0,
+            Some(ref val) => val.get_size(),
+        }
+    }
+    fn encode(&self, buf: &mut [u8]) {
+        if let Some(ref val) = *self {
+            val.encode(buf);
+        }
     }
 }
 

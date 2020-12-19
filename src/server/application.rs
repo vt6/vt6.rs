@@ -12,7 +12,9 @@ use crate::server;
 ///allows for library code in this crate to call into application-specific logic when handling
 ///messages sent by the client. The implementation is therefore highly application-dependent and
 ///typically not supplied by a library.
-pub trait MessageConnector: Sized + Send + Sync {}
+pub trait MessageConnector: Sized + Send + Sync {
+    fn new(id: server::ClientIdentity) -> Self;
+}
 
 ///Connector for client sockets in stdout mode.
 ///
@@ -20,7 +22,9 @@ pub trait MessageConnector: Sized + Send + Sync {}
 ///allows for library code in this crate to call into application-specific logic when handling
 ///messages sent by the client. The implementation is therefore highly application-dependent and
 ///typically not supplied by a library.
-pub trait StdoutConnector: Sized + Send + Sync {}
+pub trait StdoutConnector: Sized + Send + Sync {
+    fn new(id: server::ScreenIdentity) -> Self;
+}
 
 ///Main integration point for application-specific logic.
 ///

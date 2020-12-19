@@ -4,7 +4,7 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
-use crate::common::core::MessageType;
+use crate::common::core::{DecodeArgument, MessageType};
 
 mod format;
 pub use format::*;
@@ -280,6 +280,52 @@ impl<'s> MessageIterator<'s> {
                 return Ok(self.cursor);
             }
         }
+    }
+
+    //This is `pub(crate)` only for now because I want to gain experience with this API first.
+    //When it goes `pub`, it will probably be on an `IteratorExt`-like trait.
+    pub(crate) fn exactly1<A>(mut self) -> Option<A>
+    where
+        A: DecodeArgument<'s>,
+    {
+        if self.remaining_items != 1 {
+            return None;
+        }
+        Some(A::decode_argument(self.next()?)?)
+    }
+
+    //This is `pub(crate)` only for now because I want to gain experience with this API first.
+    //When it goes `pub`, it will probably be on an `IteratorExt`-like trait.
+    pub(crate) fn exactly2<A, B>(mut self) -> Option<(A, B)>
+    where
+        A: DecodeArgument<'s>,
+        B: DecodeArgument<'s>,
+    {
+        if self.remaining_items != 2 {
+            return None;
+        }
+        let a = A::decode_argument(self.next()?)?;
+        let b = B::decode_argument(self.next()?)?;
+        Some((a, b))
+    }
+
+    //This is `pub(crate)` only for now because I want to gain experience with this API first.
+    //When it goes `pub`, it will probably be on an `IteratorExt`-like trait.
+    pub(crate) fn exactly4<A, B, C, D>(mut self) -> Option<(A, B, C, D)>
+    where
+        A: DecodeArgument<'s>,
+        B: DecodeArgument<'s>,
+        C: DecodeArgument<'s>,
+        D: DecodeArgument<'s>,
+    {
+        if self.remaining_items != 2 {
+            return None;
+        }
+        let a = A::decode_argument(self.next()?)?;
+        let b = B::decode_argument(self.next()?)?;
+        let c = C::decode_argument(self.next()?)?;
+        let d = D::decode_argument(self.next()?)?;
+        Some((a, b, c, d))
     }
 }
 

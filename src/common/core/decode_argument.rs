@@ -8,12 +8,15 @@
 ///
 ///This is the inverse of [`trait EncodeArgument`](trait.EncodeArgument.html).
 ///
-///This trait is not implemented for `&[u8]` because no decoding is required to
-///reach this value type.
+///The trait implementation for byte strings (`&[u8]`) is a no-op. It's only
+///used by generic functions that decode arguments of arbitrary types.
 ///
 ///The trait implementations for booleans, integers and strings match the
 ///formats defined for basic property types in
 ///[vt6/core1.0, section 2.1](https://vt6.io/std/core/1.0/#section-2-1).
+///
+///The generic trait implementation for `Option<T>` decodes empty inputs as
+///`None` and anything else as `Some` (except for parse errors).
 pub trait DecodeArgument<'a>: Sized {
     ///Parses a bytestring `s` (which is interpreted as an argument in a VT6
     ///message) into a value of this type. If parsing succeeds, `Some` is
@@ -31,9 +34,25 @@ impl<'a> DecodeArgument<'a> for bool {
     }
 }
 
+impl<'a> DecodeArgument<'a> for &'a [u8] {
+    fn decode_argument(arg: &'a [u8]) -> Option<Self> {
+        Some(arg)
+    }
+}
+
 impl<'a> DecodeArgument<'a> for &'a str {
     fn decode_argument(arg: &'a [u8]) -> Option<Self> {
         core::str::from_utf8(arg).ok()
+    }
+}
+
+impl<'a, T: DecodeArgument<'a>> DecodeArgument<'a> for Option<T> {
+    fn decode_argument(arg: &'a [u8]) -> Option<Self> {
+        if arg.is_empty() {
+            Some(None)
+        } else {
+            Some(Some(T::decode_argument(arg)?))
+        }
     }
 }
 

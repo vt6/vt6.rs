@@ -16,7 +16,7 @@ pub enum ConnectionState<A: server::Application> {
     ///This socket is in msgio mode because of a successful client-hello message.
     Msgio(A::MessageConnector),
     ///This socket is in stdin mode because of a successful stdin-hello message.
-    Stdin,
+    Stdin(server::ScreenIdentity),
     ///This socket is in stdout mode because of a successful stdout-hello message.
     Stdout(A::StdoutConnector),
     ///This socket is currently being torn down. No further IO shall be performed on the socket and
@@ -35,7 +35,7 @@ impl<A: server::Application> ConnectionState<A> {
         match self {
             Self::Handshake => "Handshake",
             Self::Msgio(_) => "Msgio",
-            Self::Stdin => "Stdin",
+            Self::Stdin(_) => "Stdin",
             Self::Stdout(_) => "Stdout",
             Self::Teardown => "Teardown",
         }
@@ -132,7 +132,7 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
             match self.state {
                 Handshake => self.handle_incoming_msgio::<B, A::HandshakeHandler>(buf),
                 Msgio(_) => self.handle_incoming_msgio::<B, A::MessageHandler>(buf),
-                Stdin => unimplemented!(),
+                Stdin(_) => unimplemented!(),
                 Stdout(_) => unimplemented!(),
                 Teardown => {}
             }

@@ -47,10 +47,11 @@ struct MyApplication {
 struct MyApplicationRef(Arc<Mutex<MyApplication>>);
 
 impl vt6::server::Application for MyApplicationRef {
-    type MessageConnector = Dummy;
-    type StdoutConnector = Dummy;
+    type MessageConnector = MyMessageConnector;
+    type StdoutConnector = MyStdoutConnector;
     type MessageHandler = LoggingHandler<vt6::server::reject::MessageHandler>;
-    type HandshakeHandler = LoggingHandler<vt6::server::reject::HandshakeHandler>;
+    type HandshakeHandler =
+        LoggingHandler<vt6::server::core::HandshakeHandler<vt6::server::reject::HandshakeHandler>>;
 
     fn notify(&self, n: &Notification) {
         if n.is_error() {
@@ -113,12 +114,27 @@ impl vt6::server::Application for MyApplicationRef {
 ////////////////////////////////////////////////////////////////////////////////
 // Connector objects
 
-#[derive(Clone, Default)]
-struct Dummy;
+#[derive(Clone)]
+struct MyMessageConnector {
+    id: vt6::server::ClientIdentity,
+}
 
-impl vt6::server::MessageConnector for Dummy {}
+impl vt6::server::MessageConnector for MyMessageConnector {
+    fn new(id: vt6::server::ClientIdentity) -> Self {
+        Self { id }
+    }
+}
 
-impl vt6::server::StdoutConnector for Dummy {}
+#[derive(Clone)]
+struct MyStdoutConnector {
+    id: vt6::server::ScreenIdentity,
+}
+
+impl vt6::server::StdoutConnector for MyStdoutConnector {
+    fn new(id: vt6::server::ScreenIdentity) -> Self {
+        Self { id }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // custom handlers
