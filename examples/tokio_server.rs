@@ -49,7 +49,7 @@ struct MyApplicationRef(Arc<Mutex<MyApplication>>);
 impl vt6::server::Application for MyApplicationRef {
     type MessageConnector = MyMessageConnector;
     type StdoutConnector = MyStdoutConnector;
-    type MessageHandler = LoggingHandler<vt6::server::reject::MessageHandler>;
+    type MessageHandler = LoggingHandler<vt6::server::core::MessageHandler<vt6::server::reject::MessageHandler>>;
     type HandshakeHandler =
         LoggingHandler<vt6::server::core::HandshakeHandler<vt6::server::reject::HandshakeHandler>>;
 

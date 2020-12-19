@@ -4,8 +4,8 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
-use crate::common::core::msg;
 use crate::common::core::msg::DecodeMessage;
+use crate::common::core::{msg, ModuleIdentifier};
 use crate::msg::{Have, Nope, Want};
 use crate::server;
 
@@ -49,6 +49,12 @@ impl<A: server::Application> server::Handler<A> for MessageHandler {
         conn: &mut server::Connection<A, D>,
     ) {
         conn.enqueue_message(&crate::msg::Nope)
+    }
+}
+
+impl<A: server::Application> server::core::MessageHandlerExt<A> for MessageHandler {
+    fn get_supported_module_version(&self, _module: &ModuleIdentifier<'_>) -> Option<u16> {
+        None
     }
 }
 

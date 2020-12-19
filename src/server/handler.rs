@@ -23,7 +23,7 @@ use crate::server;
 ///```ignore
 ///use vt6::server::{core, reject, sig, term};
 ///impl Application for MyApplication {
-///    type MessageHandler = MyLoggingHandler<core::Handler<sig::Handler<term::Handler<MyErrorHandler<reject::Handler>>>>>;
+///    type MessageHandler = MyLoggingHandler<core::MessageHandler<sig::MessageHandler<term::MessageHandler<MyErrorHandler<reject::MessageHandler>>>>>;
 ///    //... other fields elided ...
 ///}
 ///```
