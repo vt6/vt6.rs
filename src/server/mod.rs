@@ -41,6 +41,8 @@ mod handler;
 pub use handler::*;
 mod notification;
 pub use notification::*;
+mod util;
+pub use util::*;
 
 ///Handlers and types for the [vt6::core](https://vt6.io/std/core/) module. Also implements some
 ///behavior defined in [vt6::foundation](https://vt6.io/std/foundation/).

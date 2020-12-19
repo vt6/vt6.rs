@@ -27,7 +27,8 @@ fn main() -> std::io::Result<()> {
         .enable_all()
         .build()?;
 
-    let dispatch = vt6::server::tokio::Dispatch::new("/tmp/vt6-tokio-server", app)?;
+    let socket_path = vt6::server::default_socket_path()?;
+    let dispatch = vt6::server::tokio::Dispatch::new(socket_path, app)?;
     rt.block_on(async move { dispatch.run_listener().await })
 }
 
