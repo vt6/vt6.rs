@@ -24,6 +24,9 @@ pub trait MessageConnector: Sized + Send + Sync {
 ///typically not supplied by a library.
 pub trait StdoutConnector: Sized + Send + Sync {
     fn new(id: server::ScreenIdentity) -> Self;
+
+    ///Called by the Connection whenever stdout has been received from the client.
+    fn receive(&mut self, buf: &[u8]);
 }
 
 ///Main integration point for application-specific logic.

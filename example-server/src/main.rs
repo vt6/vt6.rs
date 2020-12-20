@@ -22,6 +22,14 @@ async fn main() -> std::io::Result<()> {
         stdin_authorized: false,
         stdout_authorized: false,
     };
+    log::info!(
+        "screen1 stdin secret  = {}",
+        app.screen_credentials.stdin_secret()
+    );
+    log::info!(
+        "screen1 stdout secret = {}",
+        app.screen_credentials.stdout_secret()
+    );
     let app = MyApplicationRef(Arc::new(Mutex::new(app)));
 
     let socket_path = vt6::server::default_socket_path()?;
@@ -132,6 +140,14 @@ struct MyStdoutConnector {
 impl vt6::server::StdoutConnector for MyStdoutConnector {
     fn new(id: vt6::server::ScreenIdentity) -> Self {
         Self { id }
+    }
+
+    fn receive(&mut self, data: &[u8]) {
+        log::info!(
+            "stdout received for screen {}: {:?}",
+            self.id.screen_id(),
+            String::from_utf8_lossy(data)
+        );
     }
 }
 

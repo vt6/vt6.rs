@@ -128,12 +128,16 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
     ///been read from the client socket associated with this Connection instance.
     pub fn handle_incoming<B: ReceiveBuffer>(&mut self, buf: &mut B) {
         if !buf.contents().is_empty() {
+            use server::StdoutConnector;
             use ConnectionState::*;
             match self.state {
                 Handshake => self.handle_incoming_msgio::<B, A::HandshakeHandler>(buf),
                 Msgio(_) => self.handle_incoming_msgio::<B, A::MessageHandler>(buf),
                 Stdin(_) => unimplemented!(),
-                Stdout(_) => unimplemented!(),
+                Stdout(ref mut connector) => {
+                    connector.receive(buf.contents());
+                    buf.discard(buf.contents().len());
+                }
                 Teardown => {}
             }
         }
