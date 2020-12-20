@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "example-server"]
+
 [package]
 name    = "vt6"
 version = "0.0.1"
@@ -13,12 +16,6 @@ base64    = { version = "^0.13", default-features = false }
 tokio   = { version = "^0.3", optional = true }
 futures = { version = "^0.3", optional = true }
 bytes   = { version = "*",    optional = true }
-
-[dev-dependencies]
-
-# for the examples
-log = { version = "^0.4" }
-belog = "*"
 
 [features]
 default = ["use_std"]

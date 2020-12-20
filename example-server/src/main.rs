@@ -6,9 +6,13 @@
 
 use std::sync::{Arc, Mutex};
 use vt6::common::core::{msg, ClientID};
-use vt6::server::*;
+use vt6::server::{
+    Application, ClientCredentials, ClientIdentity, Connection, Dispatch, Handler,
+    HandshakeHandler, MessageHandler, Notification, ScreenCredentials, ScreenIdentity,
+};
 
-fn main() -> std::io::Result<()> {
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
     belog::init();
 
     let app = MyApplication {
@@ -20,16 +24,9 @@ fn main() -> std::io::Result<()> {
     };
     let app = MyApplicationRef(Arc::new(Mutex::new(app)));
 
-    //TODO We should use the default runtime and #[tokio::main], but that would bloat the feature
-    //selection on the main lib. Move this example into a separate crate to remove this
-    //restriction and make the example more idiomatic.
-    let rt = ::tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-
     let socket_path = vt6::server::default_socket_path()?;
     let dispatch = vt6::server::tokio::Dispatch::new(socket_path, app)?;
-    rt.block_on(async move { dispatch.run_listener().await })
+    dispatch.run_listener().await
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +47,8 @@ struct MyApplicationRef(Arc<Mutex<MyApplication>>);
 impl vt6::server::Application for MyApplicationRef {
     type MessageConnector = MyMessageConnector;
     type StdoutConnector = MyStdoutConnector;
-    type MessageHandler = LoggingHandler<vt6::server::core::MessageHandler<vt6::server::reject::MessageHandler>>;
+    type MessageHandler =
+        LoggingHandler<vt6::server::core::MessageHandler<vt6::server::reject::MessageHandler>>;
     type HandshakeHandler =
         LoggingHandler<vt6::server::core::HandshakeHandler<vt6::server::reject::HandshakeHandler>>;
 

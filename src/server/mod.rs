@@ -25,7 +25,7 @@ integrates with the IO library or framework that you use. This crate provides im
 `trait Dispatch` for some common IO libraries; see documentation on
 [trait Dispatch](trait.Dispatch.html) for details.
 
-The "tokio_server" example in this crate provides a minimal working example of all those pieces
+The "example-server" crate in this repo provides a minimal working example of all those pieces
 working together.
 */
 

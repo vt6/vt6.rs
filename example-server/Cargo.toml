@@ -1,0 +1,13 @@
+[package]
+name = "vt6-example-server"
+version = "0.0.1"
+authors = ["Stefan Majewsky <majewsky@gmx.net>"]
+license = "Apache-2.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+vt6 = { path = "..", features = ["use_tokio"] }
+log = { version = "^0.4" }
+belog = "*"
+tokio = { version = "^0.3", features = ["full"] }
