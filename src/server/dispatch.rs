@@ -39,9 +39,15 @@ pub trait Dispatch<A: server::Application>: Clone + Sized {
     ///question and we cannot get a second mutable reference to it. What the handler actually does
     ///is to enqueue a broadcast action. The dispatch takes ownership of the action and executes it
     ///as soon as all `&mut Connection` references have been returned to it.
-    fn enqueue_broadcast(&self, action: Box<dyn Fn(&mut server::Connection<A, Self>)>);
+    fn enqueue_broadcast(
+        &self,
+        action: Box<dyn Fn(&mut server::Connection<A, Self>) + Send + Sync>,
+    );
 
     ///Writes a message into the send buffer of the given connection.
+    ///
+    ///Calls are only allowed when `conn.state()` is `Handshake` or `Msgio`. If this condition is
+    ///not met, the implementation may choose to ignore the message or to panic.
     ///
     ///You need a `&mut Connection` reference to call this, so this method can easily be called
     ///inside [handlers](trait.Handler.html). If you want to send messages while not handling a
@@ -52,4 +58,28 @@ pub trait Dispatch<A: server::Application>: Clone + Sized {
         conn: &mut server::Connection<A, Self>,
         msg: &M,
     );
+
+    ///Writes standard input into the send buffer of the given connection.
+    ///
+    ///Calls are only alowed when `conn.state()` is `Stdin`. If this condition is not met, the
+    ///implementation may choose to ignore the message or to panic.
+    ///
+    ///You need a `&mut Connection` reference to call this, so you probably need to
+    ///`enqueue_broadcast()` your request and have the dispatch get back to you when it's ready to
+    ///give you a `&mut Connection`.
+    ///
+    ///# Examples
+    ///
+    ///To send input for the screen with the ID "example" to the respective client's stdin:
+    ///
+    ///```ignore
+    ///let buf: Vec<u8> = "hello stdin".into();
+    ///let screen = vt6::server::ScreenIdentity::new("example");
+    ///dispatch.enqueue_broadcast(Box::new(move |conn| {
+    ///    if conn.state().can_receive_stdin_for_screen(&screen) {
+    ///        conn.enqueue_stdin(&buf);
+    ///    }
+    ///}));
+    ///```
+    fn enqueue_stdin(&self, conn: &mut server::Connection<A, Self>, buf: &[u8]);
 }

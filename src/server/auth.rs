@@ -121,7 +121,7 @@ impl ClientCredentials {
 ///Screens are created either by the terminal itself (e.g. on startup) or in response to client
 ///messages. Either way, each screen is tracked as a ScreenIdentity instance (plus
 ///application-specific data) within the [Application](trait.Application.html).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScreenIdentity {
     id: String,
 }

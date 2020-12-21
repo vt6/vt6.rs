@@ -15,26 +15,57 @@ use vt6::server::{
 async fn main() -> std::io::Result<()> {
     belog::init();
 
+    //log the handshake messages that users can use to connect
+    let screen_identity = ScreenIdentity::new("screen1");
+    let screen_credentials = ScreenCredentials::generate();
+    let msg1 = vt6::msg::posix::StdinHello {
+        secret: screen_credentials.stdin_secret(),
+    };
+    log::info!("{}", encode_to_string(msg1));
+    let msg2 = vt6::msg::posix::StdoutHello {
+        secret: screen_credentials.stdout_secret(),
+    };
+    log::info!("{}", encode_to_string(msg2));
+
+    //create an Application instance
     let app = MyApplication {
         pending_clients: Vec::new(),
-        screen_identity: ScreenIdentity::new("screen1"),
-        screen_credentials: ScreenCredentials::generate(),
+        screen_identity: screen_identity.clone(),
+        screen_credentials,
         stdin_authorized: false,
         stdout_authorized: false,
     };
-    log::info!(
-        "screen1 stdin secret  = {}",
-        app.screen_credentials.stdin_secret()
-    );
-    log::info!(
-        "screen1 stdout secret = {}",
-        app.screen_credentials.stdout_secret()
-    );
     let app = MyApplicationRef(Arc::new(Mutex::new(app)));
 
+    //create a Dispatch and start its event loop
     let socket_path = vt6::server::default_socket_path()?;
-    let dispatch = vt6::server::tokio::Dispatch::new(socket_path, app)?;
-    dispatch.run_listener().await
+    let dispatch = vt6::server::tokio::Dispatch::new(socket_path, app.clone())?;
+    {
+        let dispatch = dispatch.clone();
+        tokio::spawn(async move { dispatch.run_listener().await });
+    }
+
+    //demonstrate sending stdin to client
+    //
+    //Since this example server does not take user input, we just send a static string every
+    //second. This will be a no-op until a client connects to the stdin since the loop will not
+    //find a matching Connection object in the right state.
+    let one_second = std::time::Duration::new(1, 0);
+    loop {
+        tokio::time::sleep(one_second).await;
+        let screen_identity = screen_identity.clone();
+        dispatch.enqueue_broadcast(Box::new(move |conn| {
+            if conn.state().can_receive_stdin_for_screen(&screen_identity) {
+                conn.enqueue_stdin(b"Hello stdin.\n");
+            }
+        }));
+    }
+}
+
+fn encode_to_string<M: vt6::common::core::msg::EncodeMessage>(msg: M) -> String {
+    let mut buf = [0u8; 1024];
+    let len = msg.encode(&mut buf).unwrap();
+    String::from_utf8_lossy(&buf[0..len]).into()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +82,12 @@ struct MyApplication {
 
 #[derive(Clone)]
 struct MyApplicationRef(Arc<Mutex<MyApplication>>);
+
+impl std::fmt::Debug for MyApplicationRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("MyApplicationRef(<opaque>)")
+    }
+}
 
 impl vt6::server::Application for MyApplicationRef {
     type MessageConnector = MyMessageConnector;
@@ -121,7 +158,7 @@ impl vt6::server::Application for MyApplicationRef {
 ////////////////////////////////////////////////////////////////////////////////
 // Connector objects
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct MyMessageConnector {
     id: vt6::server::ClientIdentity,
 }
@@ -132,7 +169,7 @@ impl vt6::server::MessageConnector for MyMessageConnector {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct MyStdoutConnector {
     id: vt6::server::ScreenIdentity,
 }

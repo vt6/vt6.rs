@@ -9,7 +9,7 @@ use crate::server;
 use crate::server::tokio as my;
 use futures::future::{AbortHandle, AbortRegistration};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockWriteGuard};
 use tokio::sync::Notify;
 
 struct ConnectionPoolEntry<A: server::Application> {
@@ -32,7 +32,7 @@ struct TxConnector {
 
 pub(crate) struct InnerDispatch<A: server::Application> {
     //NOTE: The `self.pool` lock is semantically dominant over the `self.tx` lock. To prevent
-    //deadlocks, the implementation must guarantee that `self.transmit` will only ever be locked
+    //deadlocks, the implementation must guarantee that `self.tx` will only ever be locked
     //when `self.pool` is already locked (both for read locks and for write locks). Across
     //functions, this is usually guaranteed by passing refs to Connection instances around (which
     //can only be obtained by holding the `self.pool` lock).
@@ -40,6 +40,7 @@ pub(crate) struct InnerDispatch<A: server::Application> {
     pub(crate) app: A,
     pool: RwLock<ConnectionPool<A>>,
     tx: RwLock<HashMap<u64, TxConnector>>,
+    bc_queue: Mutex<Vec<Box<dyn Fn(&mut server::Connection<A, Dispatch<A>>) + Send + Sync>>>,
 }
 
 impl<A: server::Application> InnerDispatch<A> {
@@ -52,6 +53,7 @@ impl<A: server::Application> InnerDispatch<A> {
                 next_connection_id: 0,
             }),
             tx: RwLock::new(HashMap::new()),
+            bc_queue: Mutex::new(Vec::new()),
         })
     }
 
@@ -132,7 +134,7 @@ impl<A: server::Application> InnerDispatch<A> {
         //ConnectionRefMut obtained from `self.connection_mut(conn_id)`. Since
         //the caller had a mutable reference to the connection with the given
         //ID, the connection state may have changed. Depending on the new state,
-        //we need to perform various maintenance tasks on this connection.
+        //we may need to perform maintenance tasks on this connection.
 
         //if the connection has been set to state Teardown, abort the rx/tx jobs
         //(this will close the client connection as the respective halfs of the
@@ -148,7 +150,19 @@ impl<A: server::Application> InnerDispatch<A> {
             }
         }
 
-        //TODO run any pending broadcasts
+        //also run maintenance on the connection pool in general
+        self.do_maintenance(pool);
+    }
+
+    fn do_maintenance(self: &Arc<Self>, pool: &mut RwLockWriteGuard<'_, ConnectionPool<A>>) {
+        //This function is called whenever we are about to drop a `self.pool.write()` lock. We use
+        //this opportunity to execute broadcasts that we could not execute until now because we had
+        //given mutable references to someone else.
+        for broadcast in self.bc_queue.lock().unwrap().drain(..) {
+            for (_id, ref mut conn_entry) in &mut pool.conns {
+                broadcast(&mut conn_entry.conn);
+            }
+        }
     }
 }
 
@@ -219,9 +233,21 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
         &self.0.app
     }
 
-    fn enqueue_broadcast(&self, _action: Box<dyn Fn(&mut server::Connection<A, Self>)>) {
-        //TODO implement enqueue_broadcast
-        unimplemented!();
+    fn enqueue_broadcast(
+        &self,
+        action: Box<dyn Fn(&mut server::Connection<A, Self>) + Send + Sync>,
+    ) {
+        //put the broadcast in the queue
+        self.0.bc_queue.lock().unwrap().push(action);
+
+        //if possible, execute the broadcast right now
+        //
+        //This part is important because, if we didn't have it, and there is nothing currently
+        //being received or transmitted, the broadcast would just needlessly sit in the queue until
+        //the next time a client sends data to us.
+        if let Ok(mut pool_lock) = self.0.pool.try_write() {
+            self.0.do_maintenance(&mut pool_lock);
+        }
     }
 
     fn enqueue_message<M: msg::EncodeMessage>(
@@ -229,6 +255,13 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
         conn: &mut server::Connection<A, Self>,
         msg: &M,
     ) {
+        if !conn.state().can_receive_messages() {
+            panic!(
+                "enqueue_message() called on connection in state {}",
+                conn.state().type_name()
+            );
+        }
+
         //NOTE: The mutability of `conn` is only used to enforce that the current thread holds the
         //`self.0.pool` write lock, cf. comment on declaration of `struct InnerDispatch`.
         let mut tx = self.0.tx.write().unwrap();
@@ -244,7 +277,7 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
         let mut enqueued = false;
         let filled_bufs = connector.bufs.iter_mut().filter(|b| b.filled_len() > 0);
         if let Some(send_buffer) = filled_bufs.last() {
-            enqueued = send_buffer.fill(|buf| msg.encode(buf)).is_ok();
+            enqueued = send_buffer.fill_if_ok(|buf| msg.encode(buf)).is_ok();
         }
 
         //if it doesn't work, try to fit the message into the send buffer directly following that
@@ -257,9 +290,51 @@ impl<A: server::Application> server::Dispatch<A> for Dispatch<A> {
                     connector.bufs.last_mut().unwrap()
                 }
             };
-            //if the fill() errors out this time, it's because the rendered message is
+            //if the fill_if_ok() errors out this time, it's because the rendered message is
             //legimitately too long, so it's a good time to panic
-            send_buffer.fill(|buf| msg.encode(buf)).unwrap();
+            send_buffer.fill_if_ok(|buf| msg.encode(buf)).unwrap();
+        }
+
+        //wake up the transmitter job if necessary
+        connector.notify.notify_one();
+    }
+
+    fn enqueue_stdin(&self, conn: &mut server::Connection<A, Self>, mut input: &[u8]) {
+        if !conn.state().can_receive_stdin() {
+            panic!(
+                "enqueue_stdin() called on connection in state {}",
+                conn.state().type_name()
+            );
+        }
+
+        //NOTE: The mutability of `conn` is only used to enforce that the current thread holds the
+        //`self.0.pool` write lock, cf. comment on declaration of `struct InnerDispatch`.
+        let mut tx = self.0.tx.write().unwrap();
+        let connector = match tx.get_mut(&conn.id()) {
+            Some(c) => c,
+            //`None` should not happen, since the `inner.pool` and `inner.tx` entries are deleted
+            //the same time, but if it's missing, we're in teardown anyway
+            None => return,
+        };
+
+        //try to fit data into the current send buffer (the last one in line that already contains
+        //some data)
+        let filled_bufs = connector.bufs.iter_mut().filter(|b| b.filled_len() > 0);
+        if let Some(send_buffer) = filled_bufs.last() {
+            input = send_buffer.fill_until_full(input);
+        }
+
+        //if that's not enough, fill the free send buffers directly following that one in order
+        while !input.is_empty() {
+            let send_buffer = match connector.bufs.iter_mut().find(|b| b.filled_len() == 0) {
+                Some(b) => b,
+                None => {
+                    //if there are no empty send buffers left, append a new one
+                    connector.bufs.push(Default::default());
+                    connector.bufs.last_mut().unwrap()
+                }
+            };
+            input = send_buffer.fill_until_full(input);
         }
 
         //wake up the transmitter job if necessary

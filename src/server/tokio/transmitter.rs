@@ -29,7 +29,10 @@ impl Default for SendBuffer {
 }
 
 impl SendBuffer {
-    pub(crate) fn fill<E, F>(&mut self, action: F) -> Result<(), E>
+    ///Executes `action` on the unfilled portion and if successful, marks the parts that were
+    ///written as filled. This is used for enqueuing messages: Messages are only enqueued
+    ///completely or not at all, to increase the chance that they are transmitted in one piece.
+    pub(crate) fn fill_if_ok<E, F>(&mut self, action: F) -> Result<(), E>
     where
         F: FnOnce(&mut [u8]) -> Result<usize, E>,
     {
@@ -43,6 +46,23 @@ impl SendBuffer {
                 Ok(())
             }
         }
+    }
+
+    ///Fills up the unfilled portion of this buffer as much as possible from `input`, and returns
+    ///the part of `input` that did not fit. This is used for enqueuing stdin: It is possible that
+    ///we get a ton of stdin at once (e.g. from a clipboard paste) that does not fit into one send
+    ///buffer at all.
+    pub(crate) fn fill_until_full<'a, 'b>(&'a mut self, input: &'b [u8]) -> &'b [u8] {
+        //how much can we copy?
+        let len = std::cmp::min(
+            input.len(),                  //how much input bytes we havej
+            self.buf.len() - self.filled, //how many bytes we have unfilled
+        );
+        if len > 0 {
+            self.buf[self.filled..(self.filled + len)].copy_from_slice(&input[0..len]);
+            self.filled += len; //no overflow check necessary here
+        }
+        &input[len..]
     }
 
     pub(crate) fn filled(&self) -> &[u8] {

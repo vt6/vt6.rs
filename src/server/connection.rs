@@ -40,6 +40,23 @@ impl<A: server::Application> ConnectionState<A> {
             Self::Teardown => "Teardown",
         }
     }
+
+    ///Checks whether `enqueue_message()` can be called on this connection. `enqueue_message()` is
+    ///valid for the states `Handshake` and `Msgio`.
+    pub fn can_receive_messages(&self) -> bool {
+        matches!(self, Self::Handshake | Self::Msgio(_))
+    }
+
+    ///Checks whether `enqueue_stdin()` can be called on this connection. `enqueue_stdin()` is
+    ///valid for the state `Stdin`.
+    pub fn can_receive_stdin(&self) -> bool {
+        matches!(self, Self::Stdin(_))
+    }
+
+    ///Checks whether this connection is the standard input for the given screen.
+    pub fn can_receive_stdin_for_screen(&self, id: &server::ScreenIdentity) -> bool {
+        matches!(self, Self::Stdin(ref my_id) if my_id == id)
+    }
 }
 
 ///Generic interface for a receive buffer.
@@ -118,10 +135,16 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
         }
     }
 
-    ///A shorthand for `self.dispatch().enqueue_message(self, action)`. See
+    ///A shorthand for `self.dispatch().enqueue_message(self, msg)`. See
     ///[over here](trait.Dispatch.html#tymethod.enqueue_message) for details.
     pub fn enqueue_message<M: msg::EncodeMessage>(&mut self, msg: &M) {
         self.dispatch().enqueue_message(self, msg)
+    }
+
+    ///A shorthand for `self.dispatch().enqueue_stdin(self, buf)`. See
+    ///[over here](trait.Dispatch.html#tymethod.enqueue_stdin) for details.
+    pub fn enqueue_stdin(&mut self, buf: &[u8]) {
+        self.dispatch().enqueue_stdin(self, buf)
     }
 
     ///Handle data sent by the client. This interface is called by the Dispatch whenever data has
@@ -133,7 +156,16 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
             match self.state {
                 Handshake => self.handle_incoming_msgio::<B, A::HandshakeHandler>(buf),
                 Msgio(_) => self.handle_incoming_msgio::<B, A::MessageHandler>(buf),
-                Stdin(_) => unimplemented!(),
+                Stdin(_) => {
+                    //receiving anything on stdin is an error, so close the connection (we might
+                    //have to relax this in the future depending on how insistent legacy clients
+                    //are on being stupid; but it's always a good idea to start out strict and get
+                    //more lenient over time then the other way around)
+                    self.set_state(ConnectionState::Teardown);
+                    let n = server::Notification::IncomingBytesDiscarded(buf.contents());
+                    self.dispatch.application().notify(&n);
+                    buf.discard(buf.contents().len());
+                }
                 Stdout(ref mut connector) => {
                     connector.receive(buf.contents());
                     buf.discard(buf.contents().len());
