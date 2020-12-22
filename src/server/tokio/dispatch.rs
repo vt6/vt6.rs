@@ -7,7 +7,7 @@
 use crate::common::core::msg;
 use crate::server;
 use crate::server::tokio as my;
-use futures::future::{AbortHandle, AbortRegistration};
+use futures::future::{AbortHandle, AbortRegistration, Abortable, Aborted};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock, RwLockWriteGuard};
 use tokio::sync::Notify;
@@ -38,6 +38,7 @@ pub(crate) struct InnerDispatch<A: server::Application> {
     //can only be obtained by holding the `self.pool` lock).
     path: std::path::PathBuf,
     pub(crate) app: A,
+    abort: Mutex<Option<AbortHandle>>,
     pool: RwLock<ConnectionPool<A>>,
     tx: RwLock<HashMap<u64, TxConnector>>,
     bc_queue: Mutex<Vec<Box<dyn Fn(&mut server::Connection<A, Dispatch<A>>) + Send + Sync>>>,
@@ -48,6 +49,7 @@ impl<A: server::Application> InnerDispatch<A> {
         Arc::new(InnerDispatch {
             path,
             app,
+            abort: Mutex::new(None),
             pool: RwLock::new(ConnectionPool {
                 conns: HashMap::new(),
                 next_connection_id: 0,
@@ -210,18 +212,49 @@ impl<A: server::Application> Dispatch<A> {
         Ok(Dispatch(InnerDispatch::new(path.into(), app)))
     }
 
-    ///Runs the dispatch's event loop. Run this with `tokio::spawn()` or
-    ///`tokio::runtime::Runtime::block_on()` etc.
+    ///Runs the dispatch's event loop. Returns `Ok(())` when `self.shutdown()` was called, or `Err`
+    ///on unexpected IO errors.
     pub async fn run_listener(&self) -> std::io::Result<()> {
         let listener = tokio::net::UnixListener::bind(&self.0.path)?;
 
-        loop {
-            let (stream, _addr) = listener.accept().await?;
-            let (stream_reader, stream_writer) = stream.into_split();
-            let (conn_id, rx_abort, tx_abort, tx_notify) = self.0.create_connection_object();
-            my::spawn_receiver(self.0.clone(), rx_abort, conn_id, stream_reader);
-            my::spawn_transmitter(self.0.clone(), tx_abort, conn_id, stream_writer, tx_notify);
-            self.0.app.notify(&server::Notification::ConnectionOpened);
+        //set up an AbortHandle that shutdown() can use to intercept our loop
+        let (ah, ar) = AbortHandle::new_pair();
+        *(self.0.abort.lock().unwrap()) = Some(ah);
+
+        //run the listener.accept() loop until IO error or abortion via shutdown()
+        let accept_future = async {
+            loop {
+                let (stream, _addr) = listener.accept().await?;
+                let (stream_reader, stream_writer) = stream.into_split();
+                let (conn_id, rx_abort, tx_abort, tx_notify) = self.0.create_connection_object();
+                my::spawn_receiver(self.0.clone(), rx_abort, conn_id, stream_reader);
+                my::spawn_transmitter(self.0.clone(), tx_abort, conn_id, stream_writer, tx_notify);
+                self.0.app.notify(&server::Notification::ConnectionOpened);
+            }
+        };
+        match Abortable::new(accept_future, ar).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return Err(e),
+            Err(Aborted) => {}
+        };
+
+        //tell all receiver/transmitter jobs to quit it
+        for conn in self.0.pool.write().unwrap().conns.values() {
+            conn.rx_abort.abort();
+            conn.tx_abort.abort();
+        }
+
+        //clean up the server socket
+        std::mem::drop(listener);
+        std::fs::remove_file(&self.0.path)
+    }
+
+    ///Ask the event loop to shutdown. After this call, the `self.run_listener()` future will
+    ///resolve to `Ok(())` once all client connections and the server socket have been dismantled.
+    pub fn shutdown(&self) {
+        use std::ops::Deref;
+        if let Some(ref handle) = self.0.abort.lock().unwrap().deref() {
+            handle.abort();
         }
     }
 }

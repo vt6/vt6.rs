@@ -37,12 +37,21 @@ async fn main() -> std::io::Result<()> {
     };
     let app = MyApplicationRef(Arc::new(Mutex::new(app)));
 
-    //create a Dispatch and start its event loop
+    //create a Dispatch, we will run its event loop down below
     let socket_path = vt6::server::default_socket_path()?;
     let dispatch = vt6::server::tokio::Dispatch::new(socket_path, app.clone())?;
+
+    //shutdown server on Ctrl-C
     {
         let dispatch = dispatch.clone();
-        tokio::spawn(async move { dispatch.run_listener().await });
+        tokio::spawn(async move {
+            use tokio::signal::unix::{signal, SignalKind};
+            let mut stream = signal(SignalKind::interrupt())?;
+            stream.recv().await;
+            log::info!("interrupt received: shutting down...");
+            dispatch.shutdown();
+            Ok(()) as std::io::Result<()>
+        });
     }
 
     //demonstrate sending stdin to client
@@ -50,16 +59,25 @@ async fn main() -> std::io::Result<()> {
     //Since this example server does not take user input, we just send a static string every
     //second. This will be a no-op until a client connects to the stdin since the loop will not
     //find a matching Connection object in the right state.
-    let one_second = std::time::Duration::new(1, 0);
-    loop {
-        tokio::time::sleep(one_second).await;
-        let screen_identity = screen_identity.clone();
-        dispatch.enqueue_broadcast(Box::new(move |conn| {
-            if conn.state().can_receive_stdin_for_screen(&screen_identity) {
-                conn.enqueue_stdin(b"Hello stdin.\n");
+    {
+        let dispatch = dispatch.clone();
+        tokio::spawn(async move {
+            let one_second = std::time::Duration::new(1, 0);
+            loop {
+                tokio::time::sleep(one_second).await;
+                let screen_identity = screen_identity.clone();
+                dispatch.enqueue_broadcast(Box::new(move |conn| {
+                    if conn.state().can_receive_stdin_for_screen(&screen_identity) {
+                        conn.enqueue_stdin(b"Hello stdin.\n");
+                    }
+                }));
             }
-        }));
+        });
     }
+
+    //run the dispatch event loop and exit the program once it's done (either via error or via
+    //Ctrl-C as set up above)
+    dispatch.run_listener().await
 }
 
 fn encode_to_string<M: vt6::common::core::msg::EncodeMessage>(msg: M) -> String {
