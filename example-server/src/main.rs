@@ -16,6 +16,8 @@ async fn main() -> std::io::Result<()> {
     belog::init();
 
     //log the handshake messages that users can use to connect
+    let client_identity = ClientIdentity::new(&ClientID::parse("a").unwrap());
+    let client_credentials = ClientCredentials::generate();
     let screen_identity = ScreenIdentity::new("screen1");
     let screen_credentials = ScreenCredentials::generate();
     let msg1 = vt6::msg::posix::StdinHello {
@@ -26,10 +28,14 @@ async fn main() -> std::io::Result<()> {
         secret: screen_credentials.stdout_secret(),
     };
     log::info!("{}", encode_to_string(msg2));
+    let msg3 = vt6::msg::ClientHello {
+        secret: client_credentials.secret(),
+    };
+    log::info!("{}", encode_to_string(msg3));
 
     //create an Application instance
     let app = MyApplication {
-        pending_clients: Vec::new(),
+        pending_clients: vec![(client_identity, client_credentials, false)],
         screen_identity: screen_identity.clone(),
         screen_credentials,
         stdin_authorized: false,
