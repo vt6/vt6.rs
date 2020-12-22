@@ -318,7 +318,7 @@ impl<'s> MessageIterator<'s> {
         C: DecodeArgument<'s>,
         D: DecodeArgument<'s>,
     {
-        if self.remaining_items != 2 {
+        if self.remaining_items != 4 {
             return None;
         }
         let a = A::decode_argument(self.next()?)?;
@@ -448,7 +448,7 @@ impl<'s> core::fmt::Display for Message<'s> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "({}", self.parsed_type)?;
         for arg in self.arguments.clone() {
-            let escaped = arg.iter().any(|&x| char_needs_escaping(x));
+            let escaped = arg.is_empty() || arg.iter().any(|&x| char_needs_escaping(x));
             f.write_str(if escaped { " \"" } else { " " })?;
             for byte in arg.iter().flat_map(|&b| core::ascii::escape_default(b)) {
                 (byte as char).fmt(f)?;

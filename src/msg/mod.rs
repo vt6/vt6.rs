@@ -8,6 +8,8 @@ use crate::common::core::{
     msg, ClientID, DecodeArgument, MessageType, ModuleIdentifier, ModuleVersion,
 };
 
+///Message types for the [vt6/core](https://vt6.io/std/core/) module.
+pub mod core;
 ///Message types for the [vt6/posix](https://vt6.io/std/posix/) module.
 pub mod posix;
 

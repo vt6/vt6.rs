@@ -14,6 +14,8 @@ use crate::server;
 ///typically not supplied by a library.
 pub trait MessageConnector: Sized + Send + Sync {
     fn new(id: server::ClientIdentity) -> Self;
+
+    fn identity(&self) -> &server::ClientIdentity;
 }
 
 ///Connector for client sockets in stdout mode.

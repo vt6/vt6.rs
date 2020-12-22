@@ -6,8 +6,10 @@
 
 use crate::common::core::msg::DecodeMessage;
 use crate::common::core::{msg, ModuleIdentifier};
-use crate::msg::{Have, Want};
+use crate::msg::core::*;
+use crate::msg::{Have, Nope, Want};
 use crate::server;
+use crate::server::{ClientIdentity, MessageConnector};
 
 ///Extension trait for [message handlers](../trait.MessageHandler.html).
 ///
@@ -68,9 +70,40 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
             return;
         }
 
-        //TODO handle core1.sub and core1.set (deferred until we have an actual property)
+        //answer `core1.client-make` messages
+        if let Some(msg) = ClientMake::decode_message(msg) {
+            let connector = conn.message_connector().unwrap();
+            //new client ID must be below this client's ID
+            if !msg.client_id.is_below(&connector.identity().client_id()) {
+                conn.enqueue_message(&Nope);
+                return;
+            }
+
+            //convert ClientMake msg into server::ClientIdentity
+            let mut id = ClientIdentity::new(&msg.client_id);
+            if let Some(sid) = msg.stdin_screen_id {
+                id = id.with_stdin(sid);
+            }
+            if let Some(sid) = msg.stdout_screen_id {
+                id = id.with_stdout(sid);
+            }
+            if let Some(sid) = msg.stderr_screen_id {
+                id = id.with_stderr(sid);
+            }
+
+            //register client and send secret to registrar
+            let d = conn.dispatch();
+            let creds = d.application().register_client(id);
+            let reply = ClientNew {
+                secret: creds.secret(),
+            };
+            conn.enqueue_message(&reply);
+            return;
+        }
 
         //TODO handle core1.lifetime-end
+
+        //TODO handle core1.sub and core1.set (deferred until we have an actual property)
 
         //if we did not return yet, we did not know how to handle this message
         self.0.handle(msg, conn);

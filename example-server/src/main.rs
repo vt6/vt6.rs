@@ -191,6 +191,10 @@ impl vt6::server::MessageConnector for MyMessageConnector {
     fn new(id: vt6::server::ClientIdentity) -> Self {
         Self { id }
     }
+
+    fn identity(&self) -> &vt6::server::ClientIdentity {
+        &self.id
+    }
 }
 
 #[derive(Clone, Debug)]
