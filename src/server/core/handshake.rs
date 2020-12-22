@@ -12,9 +12,9 @@ use crate::server;
 use crate::server::{MessageConnector, StdoutConnector};
 
 ///A [HandshakeHandler](../trait.HandshakeHandler.html) providing basic support for the client
-///handshakes defined in [vt6::foundation](https://vt6.io/std/foundation/) and the platform
+///handshakes defined in [`vt6/foundation`](https://vt6.io/std/foundation/) and the platform
 ///integration modules supported by this crate (currently only
-///[vt6::posix](https://vt6.io/std/posix/)).
+///[`vt6/posix`](https://vt6.io/std/posix/)).
 #[derive(Default)]
 pub struct HandshakeHandler<Next>(Next);
 

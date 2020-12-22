@@ -7,7 +7,7 @@
 use std::sync::{Arc, Mutex};
 use vt6::common::core::{msg, ClientID};
 use vt6::server::{
-    Application, ClientCredentials, ClientIdentity, Connection, Dispatch, Handler,
+    Application, ClientCredentials, ClientIdentity, ClientSelector, Connection, Dispatch, Handler,
     HandshakeHandler, MessageHandler, Notification, ScreenCredentials, ScreenIdentity,
 };
 
@@ -35,7 +35,7 @@ async fn main() -> std::io::Result<()> {
 
     //create an Application instance
     let app = MyApplication {
-        pending_clients: vec![(client_identity, client_credentials, false)],
+        clients: vec![(client_identity, client_credentials, false)],
         screen_identity: screen_identity.clone(),
         screen_credentials,
         stdin_authorized: false,
@@ -96,7 +96,7 @@ fn encode_to_string<M: vt6::common::core::msg::EncodeMessage>(msg: M) -> String 
 // Application object
 
 struct MyApplication {
-    pending_clients: Vec<(ClientIdentity, ClientCredentials, bool)>,
+    clients: Vec<(ClientIdentity, ClientCredentials, bool)>,
     //This example server has exactly one screen, allocated statically on startup.
     screen_identity: ScreenIdentity,
     screen_credentials: ScreenCredentials,
@@ -132,14 +132,30 @@ impl vt6::server::Application for MyApplicationRef {
     fn register_client(&self, i: ClientIdentity) -> ClientCredentials {
         let creds = ClientCredentials::generate();
         let mut app = self.0.lock().unwrap();
-        app.pending_clients.push((i, creds.clone(), false));
+        app.clients.push((i, creds.clone(), false));
         creds
+    }
+
+    fn unregister_clients(&self, s: ClientSelector) {
+        let mut app = self.0.lock().unwrap();
+        app.clients = app
+            .clients
+            .drain(..)
+            .filter(|(ident, _, _)| !s.contains(ident.client_id()))
+            .collect();
+    }
+
+    fn has_clients(&self, s: ClientSelector) -> bool {
+        let app = self.0.lock().unwrap();
+        app.clients
+            .iter()
+            .any(|(ident, _, _)| s.contains(ident.client_id()))
     }
 
     fn authorize_client(&self, secret: &str) -> Option<ClientIdentity> {
         let mut app = self.0.lock().unwrap();
         let (id, _, ref mut is_authorized) = app
-            .pending_clients
+            .clients
             .iter_mut()
             .find(|(_, creds, _)| creds.secret() == secret)?;
         if *is_authorized {
@@ -152,7 +168,7 @@ impl vt6::server::Application for MyApplicationRef {
 
     fn find_client(&self, id: ClientID<'_>) -> Option<ClientIdentity> {
         let app = self.0.lock().unwrap();
-        app.pending_clients
+        app.clients
             .iter()
             .find(|(i, _, _)| i.client_id() == id)
             .map(|(i, _, _)| i.clone())

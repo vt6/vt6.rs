@@ -116,6 +116,34 @@ impl ClientCredentials {
     }
 }
 
+///Descriptor for a set of clients.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClientSelector<'a> {
+    ///The set of all clients whose client IDs have the given client ID as a true prefix. Does not
+    ///include the client with that exact client ID.
+    StrictlyBelow(ClientID<'a>),
+    ///The set of all clients whose client IDs have the given client ID as a prefix. Includes
+    ///the client with that exact client ID.
+    AtOrBelow(ClientID<'a>),
+}
+
+impl<'a> ClientSelector<'a> {
+    ///Returns whether this set contains the client with the given ID.
+    pub fn contains(&self, other: ClientID<'a>) -> bool {
+        use ClientSelector::*;
+        match self {
+            StrictlyBelow(ref cid) => {
+                cid != &other && cid2bytes(other).starts_with(cid2bytes(*cid))
+            }
+            AtOrBelow(ref cid) => cid2bytes(other).starts_with(cid2bytes(*cid)),
+        }
+    }
+}
+
+fn cid2bytes(cid: ClientID<'_>) -> &'_ [u8] {
+    cid.as_str().as_bytes()
+}
+
 ///Information identifying a screen.
 ///
 ///Screens are created either by the terminal itself (e.g. on startup) or in response to client

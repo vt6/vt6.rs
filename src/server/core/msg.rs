@@ -5,11 +5,11 @@
 *******************************************************************************/
 
 use crate::common::core::msg::DecodeMessage;
-use crate::common::core::{msg, ModuleIdentifier};
+use crate::common::core::{msg, ModuleIdentifier, OwnedClientID};
 use crate::msg::core::*;
 use crate::msg::{Have, Nope, Want};
 use crate::server;
-use crate::server::{ClientIdentity, MessageConnector};
+use crate::server::{ClientIdentity, ClientSelector, ConnectionState, MessageConnector};
 
 ///Extension trait for [message handlers](../trait.MessageHandler.html).
 ///
@@ -30,10 +30,8 @@ pub trait MessageHandlerExt<A: server::Application>: server::MessageHandler<A> {
     fn get_supported_module_version(&self, module: &ModuleIdentifier<'_>) -> Option<u16>;
 }
 
-///A [MessageHandler](../trait.MessageHandler.html) providing basic support for the client
-///handshakes defined in [vt6::foundation](https://vt6.io/std/foundation/) and the platform
-///integration modules supported by this crate (currently only
-///[vt6::posix](https://vt6.io/std/posix/)).
+///A [MessageHandler](../trait.MessageHandler.html) covering all messages defined in
+///[`vt6/foundation`](https://vt6.io/std/foundation/) and [`vt6/core`](https://vt6.io/std/core/).
 ///
 ///Because this handler decodes certain messages defined in `vt6/core` and `vt6/foundation`, this
 ///handler requires handlers chained after it to implement
@@ -73,8 +71,17 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
         //answer `core1.client-make` messages
         if let Some(msg) = ClientMake::decode_message(msg) {
             let connector = conn.message_connector().unwrap();
+
             //new client ID must be below this client's ID
-            if !msg.client_id.is_below(&connector.identity().client_id()) {
+            let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
+            if !selector.contains(msg.client_id) {
+                conn.enqueue_message(&Nope);
+                return;
+            }
+            //client ID must not be in use yet
+            let d = conn.dispatch();
+            let selector = ClientSelector::AtOrBelow(msg.client_id);
+            if d.application().has_clients(selector) {
                 conn.enqueue_message(&Nope);
                 return;
             }
@@ -92,7 +99,6 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
             }
 
             //register client and send secret to registrar
-            let d = conn.dispatch();
             let creds = d.application().register_client(id);
             let reply = ClientNew {
                 secret: creds.secret(),
@@ -101,7 +107,29 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
             return;
         }
 
-        //TODO handle core1.lifetime-end
+        //handle `core1.lifetime-end` messages
+        if let Some(msg) = LifetimeEnd::decode_message(msg) {
+            let connector = conn.message_connector().unwrap();
+            //client ID whose lifetime ends must be below this client's ID
+            let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
+            if !selector.contains(msg.client_id) {
+                conn.enqueue_message(&Nope);
+                return;
+            }
+
+            //tear down all client connections at or below this client ID
+            let owned_client_id = OwnedClientID::from(&msg.client_id);
+            let d = conn.dispatch();
+            d.enqueue_broadcast(Box::new(move |conn| {
+                let selector = ClientSelector::AtOrBelow(owned_client_id.as_ref());
+                if let ConnectionState::Msgio(ref connector) = conn.state() {
+                    if selector.contains(connector.identity().client_id()) {
+                        conn.set_state(ConnectionState::Teardown);
+                    }
+                }
+            }));
+            return;
+        }
 
         //TODO handle core1.sub and core1.set (deferred until we have an actual property)
 

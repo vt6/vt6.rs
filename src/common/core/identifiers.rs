@@ -68,10 +68,6 @@ impl<'a> ClientID<'a> {
     pub fn as_str(&'_ self) -> &'a str {
         self.0
     }
-
-    pub fn is_below(&self, other: &ClientID<'_>) -> bool {
-        self.0.as_bytes().starts_with(other.0.as_bytes())
-    }
 }
 
 fn is_client_id_char(ch: char) -> bool {

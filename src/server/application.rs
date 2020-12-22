@@ -76,6 +76,14 @@ pub trait Application: Clone + Send + Sync + 'static {
     ///requesting client's ID is a prefix of `i.client_id()`, and that `i.client_id()` is not yet
     ///in use.
     fn register_client(&self, i: server::ClientIdentity) -> server::ClientCredentials;
+    ///Unregister all clients matching this selector. Any resources associated with these clients
+    ///shall be released, including credentials that were not redeemed yet. The caller will ensure
+    ///that all relevant client connections are torn down.
+    fn unregister_clients(&self, s: server::ClientSelector);
+    ///Returns whether there are any registrations for clients matching the given selector,
+    ///including those where no client connection has been established yet.
+    fn has_clients(&self, s: server::ClientSelector) -> bool;
+
     ///Authorize a client's attempt to handshake for an msgio socket. Since each client ID is only
     ///supposed to map to exactly one msgio socket, implementations SHALL NOT authorize the same
     ///secret multiple times.
