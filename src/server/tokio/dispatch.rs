@@ -151,18 +151,38 @@ impl<A: server::Application> InnerDispatch<A> {
                 self.app.notify(&n);
             }
         }
-
-        //also run maintenance on the connection pool in general
-        self.do_maintenance(pool);
     }
 
     fn do_maintenance(self: &Arc<Self>, pool: &mut RwLockWriteGuard<'_, ConnectionPool<A>>) {
         //This function is called whenever we are about to drop a `self.pool.write()` lock. We use
         //this opportunity to execute broadcasts that we could not execute until now because we had
         //given mutable references to someone else.
-        for broadcast in self.bc_queue.lock().unwrap().drain(..) {
-            for (_id, ref mut conn_entry) in &mut pool.conns {
-                broadcast(&mut conn_entry.conn);
+        let mut there_were_broadcasts = false;
+        loop {
+            use std::ops::DerefMut;
+            let broadcasts = std::mem::replace(self.bc_queue.lock().unwrap().deref_mut(), vec![]);
+            if broadcasts.is_empty() {
+                break;
+            }
+            there_were_broadcasts = true;
+            for broadcast in broadcasts {
+                for (_id, ref mut conn_entry) in &mut pool.conns {
+                    broadcast(&mut conn_entry.conn);
+                }
+            }
+        }
+
+        //run do_maintenance_on_conn() for all connections to detect state changes (we could not do
+        //this in the previous loop because we cannot pass `pool` to do_maintenance_on_conn() while
+        //iterating over `&mut pool.conns`
+        if there_were_broadcasts {
+            let all_conn_ids: Vec<_> = pool
+                .conns
+                .iter_mut()
+                .map(|(_, entry)| entry.conn.id())
+                .collect();
+            for conn_id in all_conn_ids {
+                self.do_maintenance_on_conn(pool, conn_id);
             }
         }
     }
@@ -194,7 +214,8 @@ impl<'a, A: server::Application> ConnectionRefMut<'a, A> {
 impl<'a, A: server::Application> Drop for ConnectionRefMut<'a, A> {
     fn drop(&mut self) {
         self.inner
-            .do_maintenance_on_conn(&mut self.guard, self.conn_id)
+            .do_maintenance_on_conn(&mut self.guard, self.conn_id);
+        self.inner.do_maintenance(&mut self.guard);
     }
 }
 
