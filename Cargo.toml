@@ -15,7 +15,7 @@ base64    = { version = "^0.13", default-features = false }
 # for the "use_tokio" feature
 tokio   = { version = "^0.3", optional = true }
 futures = { version = "^0.3", optional = true }
-bytes   = { version = "*",    optional = true }
+bytes   = { version = "^0.6", optional = true }
 
 [features]
 default = ["use_std"]

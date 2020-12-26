@@ -445,9 +445,6 @@ pub enum MessageType<'a> {
     Want,
     Have,
     Nope,
-    ClientHello,
-    ParentHello,
-    ServerHello,
     Scoped(ScopedIdentifier<'a>),
 }
 use self::MessageType::*;
@@ -473,9 +470,6 @@ impl<'a> MessageType<'a> {
             "want" => Some(Want),
             "have" => Some(Have),
             "nope" => Some(Nope),
-            "client-hello" => Some(ClientHello),
-            "parent-hello" => Some(ParentHello),
-            "server-hello" => Some(ServerHello),
             _ => Some(Scoped(ScopedIdentifier::parse(input)?)),
         }
     }
@@ -488,9 +482,6 @@ impl<'a> MessageType<'a> {
             Want => "want",
             Have => "have",
             Nope => "nope",
-            ClientHello => "client-hello",
-            ParentHello => "parent-hello",
-            ServerHello => "server-hello",
             Scoped(ref s) => s.as_str(),
         }
     }
@@ -577,16 +568,11 @@ mod tests {
             Some(ident) => assert_eq!(input, format!("{}", ident)),
             None => panic!("input {} was not recognized as message type", input),
         };
-        //eternal message types are also valid client IDs and plain identifiers (except that
-        //"*-hello" are not client IDs)...
-        if input.contains("-") {
-            assert_eq!(ClientID::parse(input), None);
-        } else {
-            match ClientID::parse(input) {
-                Some(ident) => assert_eq!(input, format!("{}", ident)),
-                None => panic!("input {} was not recognized as client ID", input),
-            };
-        }
+        //eternal message types are also valid client IDs and plain identifiers...
+        match ClientID::parse(input) {
+            Some(ident) => assert_eq!(input, format!("{}", ident)),
+            None => panic!("input {} was not recognized as client ID", input),
+        };
         match Identifier::parse(input) {
             Some(ident) => assert_eq!(input, format!("{}", ident)),
             None => panic!("input {} was not recognized as identifier", input),
@@ -689,8 +675,5 @@ mod tests {
         check_is_eternal_message_type("want");
         check_is_eternal_message_type("have");
         check_is_eternal_message_type("nope");
-        check_is_eternal_message_type("client-hello");
-        check_is_eternal_message_type("parent-hello");
-        check_is_eternal_message_type("server-hello");
     }
 }

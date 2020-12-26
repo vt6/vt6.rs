@@ -6,8 +6,7 @@
 
 use crate::common::core::msg;
 use crate::common::core::msg::DecodeMessage;
-use crate::msg::posix::{StdinHello, StdoutHello};
-use crate::msg::{ClientHello, ServerHello};
+use crate::msg::posix::{ClientHello, ServerHello, StdinHello, StdoutHello};
 use crate::server;
 use crate::server::{MessageConnector, StdoutConnector};
 

@@ -28,7 +28,7 @@ async fn main() -> std::io::Result<()> {
         secret: screen_credentials.stdout_secret(),
     };
     log::info!("{}", encode_to_string(msg2));
-    let msg3 = vt6::msg::ClientHello {
+    let msg3 = vt6::msg::posix::ClientHello {
         secret: client_credentials.secret(),
     };
     log::info!("{}", encode_to_string(msg3));
@@ -45,6 +45,7 @@ async fn main() -> std::io::Result<()> {
 
     //create a Dispatch, we will run its event loop down below
     let socket_path = vt6::server::default_socket_path()?;
+    log::info!("server socket is at {}", socket_path.to_str().unwrap());
     let dispatch = vt6::server::tokio::Dispatch::new(socket_path, app.clone())?;
 
     //shutdown server on Ctrl-C
