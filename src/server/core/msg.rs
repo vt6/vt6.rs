@@ -7,7 +7,7 @@
 use crate::common::core::msg::DecodeMessage;
 use crate::common::core::{msg, ModuleIdentifier, OwnedClientID};
 use crate::msg::core::*;
-use crate::msg::{Have, Nope, Want};
+use crate::msg::{Have, Want};
 use crate::server;
 use crate::server::HandlerError::InvalidMessage;
 use crate::server::{
@@ -76,15 +76,13 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
                 //new client ID must be below this client's ID
                 let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
                 if !selector.contains(msg.client_id) {
-                    conn.enqueue_message(&Nope);
-                    return Ok(());
+                    return Err(InvalidMessage);
                 }
                 //client ID must not be in use yet
                 let d = conn.dispatch();
                 let selector = ClientSelector::AtOrBelow(msg.client_id);
                 if d.application().has_clients(selector) {
-                    conn.enqueue_message(&Nope);
-                    return Ok(());
+                    return Err(InvalidMessage);
                 }
 
                 //convert ClientMake msg into server::ClientIdentity
@@ -113,8 +111,7 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
                 //client ID whose lifetime ends must be below this client's ID
                 let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
                 if !selector.contains(msg.client_id) {
-                    conn.enqueue_message(&Nope);
-                    return Ok(());
+                    return Err(InvalidMessage);
                 }
 
                 //tear down all client connections at or below this client ID

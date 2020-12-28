@@ -69,22 +69,22 @@ impl<'a> msg::EncodeMessage for Have<'a> {
 
 ///A `nope` message.
 ///[\[vt6/foundation, sect. 5.2\]](https://vt6.io/std/foundation/#section-5-2)
-pub struct Nope;
+pub struct Nope<'a>(pub MessageType<'a>);
 
-impl<'a> msg::DecodeMessage<'a> for Nope {
+impl<'a> msg::DecodeMessage<'a> for Nope<'a> {
     fn decode_message(msg: &'a msg::Message) -> Option<Self> {
         if msg.parsed_type() != MessageType::Nope {
             return None;
         }
-        if msg.arguments().next().is_some() {
-            return None;
-        }
-        Some(Nope)
+        let mt = msg.arguments().exactly1()?;
+        Some(Nope(mt))
     }
 }
 
-impl msg::EncodeMessage for Nope {
+impl<'a> msg::EncodeMessage for Nope<'a> {
     fn encode(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError> {
-        msg::MessageFormatter::new(buf, "nope", 0).finalize()
+        let mut f = msg::MessageFormatter::new(buf, "nope", 1);
+        f.add_argument(&self.0);
+        f.finalize()
     }
 }

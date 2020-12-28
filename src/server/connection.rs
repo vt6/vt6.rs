@@ -212,7 +212,7 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
                     }
                     //error handling according to [vt6/foundation, sect. 3.3.2]
                     (Err(InvalidMessage), HandlerObj::MessageHandler(_)) => {
-                        self.enqueue_message(&Nope);
+                        self.enqueue_message(&Nope(msg.parsed_type()));
                     }
                     (Err(UnknownMessageType), HandlerObj::MessageHandler(ref h)) => {
                         if let MessageType::Scoped(mt) = msg.parsed_type() {
@@ -226,7 +226,7 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
                         } else {
                             //anything else is an eternal message not understood by the handler, so
                             //it must be semantically invalid
-                            self.enqueue_message(&Nope);
+                            self.enqueue_message(&Nope(msg.parsed_type()));
                         }
                     }
                 }
