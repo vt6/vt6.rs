@@ -441,7 +441,6 @@ impl<'a> ScopedIdentifier<'a> {
 ///[`decode_argument()`](trait.DecodeArgument.html).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum MessageType<'a> {
-    Init,
     Want,
     Have,
     Nope,
@@ -466,7 +465,6 @@ impl<'a> MessageType<'a> {
     ///not a valid message type.
     pub fn parse(input: &'a str) -> Option<Self> {
         match input {
-            "init" => Some(Init),
             "want" => Some(Want),
             "have" => Some(Have),
             "nope" => Some(Nope),
@@ -478,7 +476,6 @@ impl<'a> MessageType<'a> {
     ///was originally passed into parse().
     pub fn as_str(&self) -> &str {
         match *self {
-            Init => "init",
             Want => "want",
             Have => "have",
             Nope => "nope",
@@ -671,9 +668,10 @@ mod tests {
         check_is_unrecognizable(".foo");
 
         //last but not least
-        check_is_eternal_message_type("init");
         check_is_eternal_message_type("want");
         check_is_eternal_message_type("have");
         check_is_eternal_message_type("nope");
+        //names that used to be eternal message types in earlier drafts, but are not anymore
+        check_is_identifier("init");
     }
 }
