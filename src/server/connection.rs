@@ -4,8 +4,10 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
-use crate::common::core::msg;
+use crate::common::core::{msg, MessageType};
+use crate::msg::{Have, Nope};
 use crate::server;
+use crate::server::{Handler, MessageHandler};
 
 ///State machine for a client socket.
 #[derive(Debug)]
@@ -70,6 +72,25 @@ pub trait ReceiveBuffer {
     ///Discards the first `len` bytes from the buffer, so that `self.contents()` afterwards refers
     ///only to the rest, after those bytes.
     fn discard(&mut self, len: usize);
+}
+
+//A simple helper object containing one of the handlers associated with A, depending on which
+//connection state we're currently in. This is only used inside Connection::handle_incoming_msgio().
+//That method used to take the concrete Handler as a type argument, but if we only have a type
+//`H: Handler`, we cannot call methods specific to MessageHandler or HandshakeHandler.
+enum HandlerObj<A: server::Application> {
+    HandshakeHandler(A::HandshakeHandler),
+    MessageHandler(A::MessageHandler),
+}
+
+impl<A: server::Application> HandlerObj<A> {
+    fn handshake() -> Self {
+        Self::HandshakeHandler(A::HandshakeHandler::default())
+    }
+
+    fn message() -> Self {
+        Self::MessageHandler(A::MessageHandler::default())
+    }
 }
 
 ///A single client connection to the server socket.
@@ -154,8 +175,8 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
             use server::StdoutConnector;
             use ConnectionState::*;
             match self.state {
-                Handshake => self.handle_incoming_msgio::<B, A::HandshakeHandler>(buf),
-                Msgio(_) => self.handle_incoming_msgio::<B, A::MessageHandler>(buf),
+                Handshake => self.handle_incoming_msgio::<B>(buf, HandlerObj::<A>::handshake()),
+                Msgio(_) => self.handle_incoming_msgio::<B>(buf, HandlerObj::<A>::message()),
                 Stdin(_) => {
                     //receiving anything on stdin is an error, so close the connection (we might
                     //have to relax this in the future depending on how insistent legacy clients
@@ -175,14 +196,40 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
         }
     }
 
-    fn handle_incoming_msgio<B: ReceiveBuffer, H: server::Handler<A> + Default>(
-        &mut self,
-        buf: &mut B,
-    ) {
-        let handler = H::default();
+    fn handle_incoming_msgio<B: ReceiveBuffer>(&mut self, buf: &mut B, handler: HandlerObj<A>) {
         match msg::Message::parse(buf.contents()) {
             Ok((msg, bytes_parsed)) => {
-                handler.handle(&msg, self);
+                use server::HandlerError::*;
+                let handle_result = match handler {
+                    HandlerObj::HandshakeHandler(ref h) => h.handle(&msg, self),
+                    HandlerObj::MessageHandler(ref h) => h.handle(&msg, self),
+                };
+                match (handle_result, handler) {
+                    (Ok(_), _) => { /* nice */ }
+                    //during handshake, anything that's not a handshake is a fatal error
+                    (Err(_), HandlerObj::HandshakeHandler(_)) => {
+                        self.set_state(ConnectionState::Teardown);
+                    }
+                    //error handling according to [vt6/foundation, sect. 3.3.2]
+                    (Err(InvalidMessage), HandlerObj::MessageHandler(_)) => {
+                        self.enqueue_message(&Nope);
+                    }
+                    (Err(UnknownMessageType), HandlerObj::MessageHandler(ref h)) => {
+                        if let MessageType::Scoped(mt) = msg.parsed_type() {
+                            let module_id = mt.module();
+                            let result = h.get_supported_module_version(&module_id);
+                            let reply = match result {
+                                Some(v) => Have::ThisModule(module_id.with_minor_version(v)),
+                                None => Have::NotThisModule(module_id),
+                            };
+                            self.enqueue_message(&reply);
+                        } else {
+                            //anything else is an eternal message not understood by the handler, so
+                            //it must be semantically invalid
+                            self.enqueue_message(&Nope);
+                        }
+                    }
+                }
                 buf.discard(bytes_parsed);
             }
             Err(e) if e.kind == msg::ParseErrorKind::UnexpectedEOF => {
@@ -190,7 +237,14 @@ impl<A: server::Application, D: server::Dispatch<A>> Connection<A, D> {
                 return;
             }
             Err(e) => {
-                handler.handle_error(&e, self);
+                match handler {
+                    HandlerObj::HandshakeHandler(h) => h.handle_error(&e, self),
+                    HandlerObj::MessageHandler(h) => h.handle_error(&e, self),
+                };
+                //during handshake, anything that's not a valid handshake is a fatal error
+                if matches!(self.state, ConnectionState::Handshake) {
+                    self.set_state(ConnectionState::Teardown);
+                }
                 //After a parse error, recover by skipping ahead to the next possible start of
                 //a message, i.e. the next `{` sign. [vt6/foundation, sect. 3.3]
                 //

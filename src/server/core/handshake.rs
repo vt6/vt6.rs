@@ -8,6 +8,7 @@ use crate::common::core::msg;
 use crate::common::core::msg::DecodeMessage;
 use crate::msg::posix::{ClientHello, ServerHello, StdinHello, StdoutHello};
 use crate::server;
+use crate::server::HandlerError::InvalidMessage;
 use crate::server::{MessageConnector, StdoutConnector};
 
 ///A [HandshakeHandler](../trait.HandshakeHandler.html) providing basic support for the client
@@ -29,26 +30,27 @@ impl<A: server::Application, Next: server::HandshakeHandler<A>> server::Handler<
         &self,
         msg: &msg::Message,
         conn: &mut server::Connection<A, D>,
-    ) {
+    ) -> Result<(), server::HandlerError> {
         let d = conn.dispatch();
+        let app = d.application();
 
-        if let Some(msg) = StdinHello::decode_message(msg) {
-            if let Some(identity) = d.application().authorize_stdin(msg.secret) {
+        match msg.parsed_type().as_str() {
+            "posix1.stdin-hello" => {
+                let msg = StdinHello::decode_message(msg).ok_or(InvalidMessage)?;
+                let identity = app.authorize_stdin(msg.secret).ok_or(InvalidMessage)?;
                 conn.set_state(server::ConnectionState::Stdin(identity));
-                return;
+                Ok(())
             }
-        }
-
-        if let Some(msg) = StdoutHello::decode_message(msg) {
-            if let Some(identity) = d.application().authorize_stdout(msg.secret) {
+            "posix1.stdout-hello" => {
+                let msg = StdoutHello::decode_message(msg).ok_or(InvalidMessage)?;
+                let identity = app.authorize_stdout(msg.secret).ok_or(InvalidMessage)?;
                 let connector = A::StdoutConnector::new(identity);
                 conn.set_state(server::ConnectionState::Stdout(connector));
-                return;
+                Ok(())
             }
-        }
-
-        if let Some(msg) = ClientHello::decode_message(msg) {
-            if let Some(identity) = d.application().authorize_client(msg.secret) {
+            "posix1.client-hello" => {
+                let msg = ClientHello::decode_message(msg).ok_or(InvalidMessage)?;
+                let identity = app.authorize_client(msg.secret).ok_or(InvalidMessage)?;
                 let connector = A::MessageConnector::new(identity.clone());
                 conn.set_state(server::ConnectionState::Msgio(connector));
                 let reply = ServerHello {
@@ -58,12 +60,10 @@ impl<A: server::Application, Next: server::HandshakeHandler<A>> server::Handler<
                     stderr_screen_id: identity.stderr_screen_id(),
                 };
                 conn.enqueue_message(&reply);
-                return;
+                Ok(())
             }
+            _ => self.0.handle(msg, conn),
         }
-
-        //if we did not return, we did not handshake successfully
-        self.0.handle(msg, conn);
     }
 
     fn handle_error<D: server::Dispatch<A>>(

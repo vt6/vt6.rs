@@ -9,7 +9,10 @@ use crate::common::core::{msg, ModuleIdentifier, OwnedClientID};
 use crate::msg::core::*;
 use crate::msg::{Have, Nope, Want};
 use crate::server;
-use crate::server::{ClientIdentity, ClientSelector, ConnectionState, MessageConnector};
+use crate::server::HandlerError::InvalidMessage;
+use crate::server::{
+    ClientIdentity, ClientSelector, ConnectionState, MessageConnector, MessageHandler as _,
+};
 
 ///Extension trait for [message handlers](../trait.MessageHandler.html).
 ///
@@ -22,12 +25,8 @@ use crate::server::{ClientIdentity, ClientSelector, ConnectionState, MessageConn
 ///handler in the chain when they cannot give a definitive answer. The last handler in a chain will
 ///usually deny any requests not answered earlier.
 pub trait MessageHandlerExt<A: server::Application>: server::MessageHandler<A> {
-    ///Returns whether the given module is supported by this handler, and if so, which version is
-    ///supported. This is used to answer `want` messages. For example, the message `(want foo2)`
-    ///will be translated into `get_supported_module_version(m)` where `m.as_str() == "foo2"`. If
-    ///the result is `Some(4)`, the reply `(have foo2.4)` will be sent. `None` indicates that the
-    ///module in question is not supported at all.
-    fn get_supported_module_version(&self, module: &ModuleIdentifier<'_>) -> Option<u16>;
+    //NOTE: This is currently empty, but I'm leaving it here because there will be messages here to
+    //handle core1.{set,sub} later.
 }
 
 ///A [MessageHandler](../trait.MessageHandler.html) covering all messages defined in
@@ -42,6 +41,12 @@ pub struct MessageHandler<Next>(Next);
 impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::MessageHandler<A>
     for MessageHandler<Next>
 {
+    fn get_supported_module_version(&self, module: &ModuleIdentifier<'_>) -> Option<u16> {
+        match module.as_str() {
+            "core1" => Some(0),
+            _ => self.0.get_supported_module_version(module),
+        }
+    }
 }
 
 impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::Handler<A>
@@ -51,90 +56,82 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
         &self,
         msg: &msg::Message,
         conn: &mut server::Connection<A, D>,
-    ) {
-        //answer `want` messages: we support `core1.0` and all modules that the
-        //following handlers support
-        if let Some(Want(module_id)) = Want::decode_message(msg) {
-            let result = if module_id.as_str() == "core1" {
-                Some(0)
-            } else {
-                self.0.get_supported_module_version(&module_id)
-            };
-            let reply = match result {
-                Some(v) => Have::ThisModule(module_id.with_minor_version(v)),
-                None => Have::NotThisModule(module_id),
-            };
-            conn.enqueue_message(&reply);
-            return;
-        }
-
-        //answer `core1.client-make` messages
-        if let Some(msg) = ClientMake::decode_message(msg) {
-            let connector = conn.message_connector().unwrap();
-
-            //new client ID must be below this client's ID
-            let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
-            if !selector.contains(msg.client_id) {
-                conn.enqueue_message(&Nope);
-                return;
-            }
-            //client ID must not be in use yet
-            let d = conn.dispatch();
-            let selector = ClientSelector::AtOrBelow(msg.client_id);
-            if d.application().has_clients(selector) {
-                conn.enqueue_message(&Nope);
-                return;
-            }
-
-            //convert ClientMake msg into server::ClientIdentity
-            let mut id = ClientIdentity::new(&msg.client_id);
-            if let Some(sid) = msg.stdin_screen_id {
-                id = id.with_stdin(sid);
-            }
-            if let Some(sid) = msg.stdout_screen_id {
-                id = id.with_stdout(sid);
-            }
-            if let Some(sid) = msg.stderr_screen_id {
-                id = id.with_stderr(sid);
-            }
-
-            //register client and send secret to registrar
-            let creds = d.application().register_client(id);
-            let reply = ClientNew {
-                secret: creds.secret(),
-            };
-            conn.enqueue_message(&reply);
-            return;
-        }
-
-        //handle `core1.lifetime-end` messages
-        if let Some(msg) = LifetimeEnd::decode_message(msg) {
-            let connector = conn.message_connector().unwrap();
-            //client ID whose lifetime ends must be below this client's ID
-            let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
-            if !selector.contains(msg.client_id) {
-                conn.enqueue_message(&Nope);
-                return;
-            }
-
-            //tear down all client connections at or below this client ID
-            let owned_client_id = OwnedClientID::from(&msg.client_id);
-            let d = conn.dispatch();
-            d.enqueue_broadcast(Box::new(move |conn| {
-                let selector = ClientSelector::AtOrBelow(owned_client_id.as_ref());
-                if let ConnectionState::Msgio(ref connector) = conn.state() {
-                    if selector.contains(connector.identity().client_id()) {
-                        conn.set_state(ConnectionState::Teardown);
-                    }
-                }
-            }));
-            return;
-        }
-
+    ) -> Result<(), server::HandlerError> {
         //TODO handle core1.sub and core1.set (deferred until we have an actual property)
+        match msg.parsed_type().as_str() {
+            "want" => {
+                let Want(module_id) = Want::decode_message(msg).ok_or(InvalidMessage)?;
+                let result = self.get_supported_module_version(&module_id);
+                let reply = match result {
+                    Some(v) => Have::ThisModule(module_id.with_minor_version(v)),
+                    None => Have::NotThisModule(module_id),
+                };
+                conn.enqueue_message(&reply);
+                Ok(())
+            }
+            "core1.client-make" => {
+                let msg = ClientMake::decode_message(msg).ok_or(InvalidMessage)?;
+                let connector = conn.message_connector().unwrap();
 
-        //if we did not return yet, we did not know how to handle this message
-        self.0.handle(msg, conn);
+                //new client ID must be below this client's ID
+                let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
+                if !selector.contains(msg.client_id) {
+                    conn.enqueue_message(&Nope);
+                    return Ok(());
+                }
+                //client ID must not be in use yet
+                let d = conn.dispatch();
+                let selector = ClientSelector::AtOrBelow(msg.client_id);
+                if d.application().has_clients(selector) {
+                    conn.enqueue_message(&Nope);
+                    return Ok(());
+                }
+
+                //convert ClientMake msg into server::ClientIdentity
+                let mut id = ClientIdentity::new(&msg.client_id);
+                if let Some(sid) = msg.stdin_screen_id {
+                    id = id.with_stdin(sid);
+                }
+                if let Some(sid) = msg.stdout_screen_id {
+                    id = id.with_stdout(sid);
+                }
+                if let Some(sid) = msg.stderr_screen_id {
+                    id = id.with_stderr(sid);
+                }
+
+                //register client and send secret to registrar
+                let creds = d.application().register_client(id);
+                let reply = ClientNew {
+                    secret: creds.secret(),
+                };
+                conn.enqueue_message(&reply);
+                Ok(())
+            }
+            "core1.lifetime-end" => {
+                let msg = LifetimeEnd::decode_message(msg).ok_or(InvalidMessage)?;
+                let connector = conn.message_connector().unwrap();
+                //client ID whose lifetime ends must be below this client's ID
+                let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
+                if !selector.contains(msg.client_id) {
+                    conn.enqueue_message(&Nope);
+                    return Ok(());
+                }
+
+                //tear down all client connections at or below this client ID
+                let owned_client_id = OwnedClientID::from(&msg.client_id);
+                let d = conn.dispatch();
+                d.enqueue_broadcast(Box::new(move |conn| {
+                    let selector = ClientSelector::AtOrBelow(owned_client_id.as_ref());
+                    if let ConnectionState::Msgio(ref connector) = conn.state() {
+                        if selector.contains(connector.identity().client_id()) {
+                            conn.set_state(ConnectionState::Teardown);
+                        }
+                    }
+                }));
+                Ok(())
+            }
+            _ => self.0.handle(msg, conn),
+        }
     }
 
     fn handle_error<D: server::Dispatch<A>>(

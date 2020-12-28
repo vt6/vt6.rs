@@ -118,9 +118,9 @@ impl vt6::server::Application for MyApplicationRef {
     type MessageConnector = MyMessageConnector;
     type StdoutConnector = MyStdoutConnector;
     type MessageHandler =
-        LoggingHandler<vt6::server::core::MessageHandler<vt6::server::reject::MessageHandler>>;
+        LoggingHandler<vt6::server::core::MessageHandler<vt6::server::RejectHandler>>;
     type HandshakeHandler =
-        LoggingHandler<vt6::server::core::HandshakeHandler<vt6::server::reject::HandshakeHandler>>;
+        LoggingHandler<vt6::server::core::HandshakeHandler<vt6::server::RejectHandler>>;
 
     fn notify(&self, n: &Notification) {
         if n.is_error() {
@@ -244,7 +244,11 @@ struct LoggingHandler<H> {
 }
 
 impl<A: Application, H: Handler<A>> Handler<A> for LoggingHandler<H> {
-    fn handle<D: Dispatch<A>>(&self, msg: &msg::Message, conn: &mut Connection<A, D>) {
+    fn handle<D: Dispatch<A>>(
+        &self,
+        msg: &msg::Message,
+        conn: &mut Connection<A, D>,
+    ) -> Result<(), vt6::server::HandlerError> {
         log::info!(
             "received message {} in connection state {}",
             msg,
@@ -259,6 +263,13 @@ impl<A: Application, H: Handler<A>> Handler<A> for LoggingHandler<H> {
     }
 }
 
-impl<A: Application, H: MessageHandler<A>> MessageHandler<A> for LoggingHandler<H> {}
+impl<A: Application, H: MessageHandler<A>> MessageHandler<A> for LoggingHandler<H> {
+    fn get_supported_module_version(
+        &self,
+        module: &vt6::common::core::ModuleIdentifier<'_>,
+    ) -> Option<u16> {
+        self.next.get_supported_module_version(module)
+    }
+}
 
 impl<A: Application, H: HandshakeHandler<A>> HandshakeHandler<A> for LoggingHandler<H> {}
