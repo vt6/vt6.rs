@@ -44,6 +44,7 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::M
     fn get_supported_module_version(&self, module: &ModuleIdentifier<'_>) -> Option<u16> {
         match module.as_str() {
             "core1" => Some(0),
+            "posix1" => Some(0),
             _ => self.0.get_supported_module_version(module),
         }
     }
@@ -126,6 +127,10 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
                     }
                 }));
                 Ok(())
+            }
+            "posix1.stdin-hello" | "posix1.stdout-hello" | "posix1.client-hello" => {
+                //these message types exist, but they are only allowed during the handshake phase
+                Err(InvalidMessage)
             }
             _ => self.0.handle(msg, conn),
         }
