@@ -71,7 +71,7 @@ pub enum ClientIDSuffix {
     ///shells, each command line is a job, and the commands in it are children
     ///within that job.)
     ///
-    ///It is okay to reuse job indexes as long as the `core1.lifetime-end`
+    ///It is okay to reuse job indexes as long as the `core1.client-end`
     ///message has been sent for the job's lifetime before its index is reused.
     Job(u32),
     ///`Child(i, j)` is the client ID of the j-th child process in the i-th job

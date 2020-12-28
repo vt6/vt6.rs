@@ -66,25 +66,25 @@ impl<'a> msg::EncodeMessage for ClientNew<'a> {
     }
 }
 
-///A `core1.lifetime-end` message.
+///A `core1.client-end` message.
 ///[\[vt6/core1, sect. X.Y\]](https://vt6.io/std/core1/#section-X-Y)
-pub struct LifetimeEnd<'a> {
+pub struct ClientEnd<'a> {
     pub client_id: ClientID<'a>,
 }
 
-impl<'a> msg::DecodeMessage<'a> for LifetimeEnd<'a> {
+impl<'a> msg::DecodeMessage<'a> for ClientEnd<'a> {
     fn decode_message(msg: &'a msg::Message) -> Option<Self> {
-        if msg.parsed_type().as_str() != "core1.lifetime-end" {
+        if msg.parsed_type().as_str() != "core1.client-end" {
             return None;
         }
         let client_id = msg.arguments().exactly1()?;
-        Some(LifetimeEnd { client_id })
+        Some(ClientEnd { client_id })
     }
 }
 
-impl<'a> msg::EncodeMessage for LifetimeEnd<'a> {
+impl<'a> msg::EncodeMessage for ClientEnd<'a> {
     fn encode(&self, buf: &mut [u8]) -> Result<usize, msg::BufferTooSmallError> {
-        let mut f = msg::MessageFormatter::new(buf, "core1.lifetime-end", 1);
+        let mut f = msg::MessageFormatter::new(buf, "core1.client-end", 1);
         f.add_argument(&self.client_id);
         f.finalize()
     }

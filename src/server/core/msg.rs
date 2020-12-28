@@ -106,8 +106,8 @@ impl<A: server::Application, Next: server::core::MessageHandlerExt<A>> server::H
                 conn.enqueue_message(&reply);
                 Ok(())
             }
-            "core1.lifetime-end" => {
-                let msg = LifetimeEnd::decode_message(msg).ok_or(InvalidMessage)?;
+            "core1.client-end" => {
+                let msg = ClientEnd::decode_message(msg).ok_or(InvalidMessage)?;
                 let connector = conn.message_connector().unwrap();
                 //client ID whose lifetime ends must be below this client's ID
                 let selector = ClientSelector::StrictlyBelow(connector.identity().client_id());
