@@ -71,7 +71,7 @@ impl<'a> ClientID<'a> {
 }
 
 fn is_client_id_char(ch: char) -> bool {
-    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')
+    ('A'..='Z').contains(&ch) || ('a'..='z').contains(&ch) || ('0'..='9').contains(&ch)
 }
 
 //Like a ClientID, but owns the allocation backing the contained string. This type is internal for
@@ -186,15 +186,15 @@ fn parse_ident_or_module_ident(input: &str) -> Option<(Identifier<'_>, Option<u1
 }
 
 fn is_ident_leader(ch: char) -> bool {
-    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_'
+    ('A'..='Z').contains(&ch) || ('a'..='z').contains(&ch) || ch == '_'
 }
 
 fn is_ident_char(ch: char) -> bool {
-    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_' || ch == '-'
+    ('A'..='Z').contains(&ch) || ('a'..='z').contains(&ch) || ch == '_' || ch == '-'
 }
 
 fn is_digit(ch: char) -> bool {
-    ch >= '0' && ch <= '9'
+    ('0'..='9').contains(&ch)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

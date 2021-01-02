@@ -221,7 +221,7 @@ impl<'s> Cursor<'s> {
 }
 
 fn isnum(c: u8) -> bool {
-    c >= b'0' && c <= b'9'
+    (b'0'..=b'9').contains(&c)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,9 +465,9 @@ fn char_needs_escaping(ch: u8) -> bool {
     //vt6/foundation, sect. 3.1.3:
     //> Bytestrings whose value matches the regular expression `^[A-Za-z0-9._-]*$` are represented
     //> directly by their value.
-    !((ch >= b'A' && ch <= b'Z')
-        || (ch >= b'a' && ch <= b'z')
-        || (ch >= b'0' && ch <= b'9')
+    !((b'A'..=b'Z').contains(&ch)
+        || (b'a'..=b'z').contains(&ch)
+        || (b'0'..=b'9').contains(&ch)
         || ch == b'.'
         || ch == b'_'
         || ch == b'-')

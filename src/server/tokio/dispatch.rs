@@ -41,6 +41,9 @@ pub(crate) struct InnerDispatch<A: server::Application> {
     abort: Mutex<Option<AbortHandle>>,
     pool: RwLock<ConnectionPool<A>>,
     tx: RwLock<HashMap<u64, TxConnector>>,
+    //This #[allow] is here because factoring out `type Broadcast<A>` or something like that does
+    //nothing good except shortening this one line at the expense of introducing another type name.
+    #[allow(clippy::type_complexity)]
     bc_queue: Mutex<Vec<Box<dyn Fn(&mut server::Connection<A, Dispatch<A>>) + Send + Sync>>>,
 }
 
@@ -93,6 +96,9 @@ impl<A: server::Application> InnerDispatch<A> {
         (conn_id, rx_ar, tx_ar, tx_notify)
     }
 
+    //This #[allow] is here because when I try fixing the lint, it turns into a compile error that
+    //I don't understand. TODO: Check if this is a bug in Clippy or rustc.
+    #[allow(clippy::needless_lifetimes)]
     pub(crate) fn connection_mut<'a>(self: &'a Arc<Self>, conn_id: u64) -> ConnectionRefMut<'a, A> {
         ConnectionRefMut {
             inner: self,
@@ -166,7 +172,7 @@ impl<A: server::Application> InnerDispatch<A> {
             }
             there_were_broadcasts = true;
             for broadcast in broadcasts {
-                for (_id, ref mut conn_entry) in &mut pool.conns {
+                for ref mut conn_entry in pool.conns.values_mut() {
                     broadcast(&mut conn_entry.conn);
                 }
             }
