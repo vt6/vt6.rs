@@ -40,6 +40,9 @@ impl<'a> msg::EncodeMessage for ClientHello<'a> {
 ///[\[vt6/foundation, sect. X.Y\]](https://vt6.io/std/foundation/#section-X-Y)
 pub struct ParentHello<'a> {
     pub client_secret: &'a str,
+    #[cfg(feature = "use_std")]
+    pub server_socket_path: &'a std::path::Path,
+    #[cfg(not(feature = "use_std"))]
     pub server_socket_path: &'a [u8],
 }
 

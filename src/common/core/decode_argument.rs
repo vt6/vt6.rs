@@ -46,6 +46,15 @@ impl<'a> DecodeArgument<'a> for &'a str {
     }
 }
 
+#[cfg(feature = "use_std")]
+impl<'a> DecodeArgument<'a> for &'a std::path::Path {
+    fn decode_argument(arg: &'a [u8]) -> Option<Self> {
+        use std::os::unix::ffi::OsStrExt;
+        let os_str = std::ffi::OsStr::from_bytes(arg);
+        Some(std::path::Path::new(os_str))
+    }
+}
+
 impl<'a, T: DecodeArgument<'a>> DecodeArgument<'a> for Option<T> {
     fn decode_argument(arg: &'a [u8]) -> Option<Self> {
         if arg.is_empty() {

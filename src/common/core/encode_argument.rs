@@ -76,6 +76,14 @@ impl EncodeArgument for str {
     }
 }
 
+#[cfg(feature = "use_std")]
+impl EncodedArgument for std::path::Path {
+    fn encoded(&self) -> &[u8] {
+        use std::os::unix::ffi::OsStrExt;
+        self.as_os_str().as_bytes()
+    }
+}
+
 impl EncodeArgument for bool {
     fn get_size(&self) -> usize {
         1
