@@ -13,7 +13,11 @@ use crate::common::core::msg;
 ///For most messages defined in the main VT6 modules, there is a message type implementing this
 ///trait in [vt6::msg](../../../msg/index.html).
 pub trait DecodeMessage<'a>: Sized {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self>;
+    ///There are two separate lifetimes at play here. `'a` is the lifetime of the byte string from
+    ///which the message was parsed. `'b` is the lifetime of the reference to the `Message` object.
+    ///We could take `msg` by value to avoid this second lifetime, but then we would have to litter
+    ///callsites with `.clone()` needlessly.
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self>;
 }
 
 ///A trait for types that serialize into a VT6 message.

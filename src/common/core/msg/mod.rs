@@ -91,6 +91,17 @@ pub struct ParseError<'s> {
     pub kind: ParseErrorKind,
 }
 
+impl<'s> ParseError<'s> {
+    ///Shorthand for `self.kind == vt6::common::core::msg::ParseErrorKind::UnexpectedEOF`.
+    ///
+    ///parse() returns UnexpectedEOF when the buffer did not contain a full message. This error
+    ///usually occurs when we need to still need to read the rest of the message from a socket,
+    ///hence the "is_incomplete" name.
+    pub fn is_incomplete(&self) -> bool {
+        self.kind == ParseErrorKind::UnexpectedEOF
+    }
+}
+
 impl<'s> core::fmt::Display for ParseError<'s> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "Parse error at offset {}: {}", self.offset, self.kind)
@@ -369,7 +380,7 @@ impl<'s> core::fmt::Debug for MessageIterator<'s> {
 ///let (msg, _) = Message::parse(b"{3|9:core1.set,13:example.title,11:hello world,}").unwrap();
 ///assert_eq!(format!("{}", msg), r#"(core1.set example.title "hello world")"#);
 ///```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Message<'s> {
     parsed_type: MessageType<'s>,
     arguments: MessageIterator<'s>,

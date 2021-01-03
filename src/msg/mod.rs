@@ -13,10 +13,11 @@ pub mod posix;
 
 ///A `want` message.
 ///[\[vt6/foundation, sect. 4.1\]](https://vt6.io/std/foundation/#section-4-1)
+#[derive(Clone, Debug)]
 pub struct Want<'a>(pub ModuleIdentifier<'a>);
 
 impl<'a> msg::DecodeMessage<'a> for Want<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type() != MessageType::Want {
             return None;
         }
@@ -35,13 +36,14 @@ impl<'a> msg::EncodeMessage for Want<'a> {
 
 ///A `have` message.
 ///[\[vt6/foundation, sect. 4.2\]](https://vt6.io/std/foundation/#section-4-2)
+#[derive(Clone, Debug)]
 pub enum Have<'a> {
     ThisModule(ModuleVersion<'a>),
     NotThisModule(ModuleIdentifier<'a>),
 }
 
 impl<'a> msg::DecodeMessage<'a> for Have<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type() != MessageType::Have {
             return None;
         }
@@ -69,10 +71,11 @@ impl<'a> msg::EncodeMessage for Have<'a> {
 
 ///A `nope` message.
 ///[\[vt6/foundation, sect. 5.2\]](https://vt6.io/std/foundation/#section-5-2)
+#[derive(Clone, Debug)]
 pub struct Nope<'a>(pub MessageType<'a>);
 
 impl<'a> msg::DecodeMessage<'a> for Nope<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type() != MessageType::Nope {
             return None;
         }

@@ -14,12 +14,13 @@ const STDOUT_HELLO: &str = "posix1.stdout-hello";
 
 ///A `posix1.client-hello` message.
 ///[\[vt6/foundation, sect. X.Y\]](https://vt6.io/std/foundation/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct ClientHello<'a> {
     pub secret: &'a str,
 }
 
 impl<'a> msg::DecodeMessage<'a> for ClientHello<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != CLIENT_HELLO {
             return None;
         }
@@ -38,6 +39,7 @@ impl<'a> msg::EncodeMessage for ClientHello<'a> {
 
 ///A `posix1.parent-hello` message.
 ///[\[vt6/foundation, sect. X.Y\]](https://vt6.io/std/foundation/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct ParentHello<'a> {
     pub client_secret: &'a str,
     #[cfg(feature = "use_std")]
@@ -47,7 +49,7 @@ pub struct ParentHello<'a> {
 }
 
 impl<'a> msg::DecodeMessage<'a> for ParentHello<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != PARENT_HELLO {
             return None;
         }
@@ -70,6 +72,7 @@ impl<'a> msg::EncodeMessage for ParentHello<'a> {
 
 ///A `posix1.server-hello` message.
 ///[\[vt6/foundation, sect. X.Y\]](https://vt6.io/std/foundation/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct ServerHello<'a> {
     pub client_id: ClientID<'a>,
     pub stdin_screen_id: Option<&'a str>,
@@ -78,7 +81,7 @@ pub struct ServerHello<'a> {
 }
 
 impl<'a> msg::DecodeMessage<'a> for ServerHello<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != SERVER_HELLO {
             return None;
         }
@@ -106,12 +109,13 @@ impl<'a> msg::EncodeMessage for ServerHello<'a> {
 
 ///A `posix1.stdin-hello` message.
 ///[\[vt6/posix1, sect. X.Y\]](https://vt6.io/std/posix1/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct StdinHello<'a> {
     pub secret: &'a str,
 }
 
 impl<'a> msg::DecodeMessage<'a> for StdinHello<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != STDIN_HELLO {
             return None;
         }
@@ -130,12 +134,13 @@ impl<'a> msg::EncodeMessage for StdinHello<'a> {
 
 ///A `posix1.stdout-hello` message.
 ///[\[vt6/posix1, sect. X.Y\]](https://vt6.io/std/posix1/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct StdoutHello<'a> {
     pub secret: &'a str,
 }
 
 impl<'a> msg::DecodeMessage<'a> for StdoutHello<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != STDOUT_HELLO {
             return None;
         }

@@ -8,6 +8,7 @@ use crate::common::core::{msg, ClientID};
 
 ///A `core1.client-make` message.
 ///[\[vt6/core1, sect. X.Y\]](https://vt6.io/std/core1/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct ClientMake<'a> {
     pub client_id: ClientID<'a>,
     pub stdin_screen_id: Option<&'a str>,
@@ -16,7 +17,7 @@ pub struct ClientMake<'a> {
 }
 
 impl<'a> msg::DecodeMessage<'a> for ClientMake<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != "core1.client-make" {
             return None;
         }
@@ -44,12 +45,13 @@ impl<'a> msg::EncodeMessage for ClientMake<'a> {
 
 ///A `core1.client-new` message.
 ///[\[vt6/core1, sect. X.Y\]](https://vt6.io/std/core1/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct ClientNew<'a> {
     pub secret: &'a str,
 }
 
 impl<'a> msg::DecodeMessage<'a> for ClientNew<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != "core1.client-new" {
             return None;
         }
@@ -68,12 +70,13 @@ impl<'a> msg::EncodeMessage for ClientNew<'a> {
 
 ///A `core1.client-end` message.
 ///[\[vt6/core1, sect. X.Y\]](https://vt6.io/std/core1/#section-X-Y)
+#[derive(Clone, Debug)]
 pub struct ClientEnd<'a> {
     pub client_id: ClientID<'a>,
 }
 
 impl<'a> msg::DecodeMessage<'a> for ClientEnd<'a> {
-    fn decode_message(msg: &'a msg::Message) -> Option<Self> {
+    fn decode_message<'b>(msg: &'b msg::Message<'a>) -> Option<Self> {
         if msg.parsed_type().as_str() != "core1.client-end" {
             return None;
         }

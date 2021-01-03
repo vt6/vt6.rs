@@ -11,6 +11,7 @@ edition = "2018"
 [dependencies]
 getrandom = { version = "^0.2",  default-features = false }
 base64    = { version = "^0.13", default-features = false }
+libc      = { version = "^0.2",  default-features = false }
 
 # for the "use_tokio" feature
 tokio   = { version = "^1", optional = true }
@@ -19,5 +20,5 @@ bytes   = { version = "^1", optional = true }
 
 [features]
 default = ["use_std"]
-use_std = ["getrandom/std", "base64/std"]
+use_std = ["getrandom/std", "base64/std", "libc/std"]
 use_tokio = ["use_std", "bytes", "futures", "tokio", "tokio/io-util", "tokio/net", "tokio/rt", "tokio/sync"]
