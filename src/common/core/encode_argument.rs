@@ -37,6 +37,20 @@ pub trait EncodeArgument {
         v
     }
 }
+//NOTE(majewsky): I'm aware that this ^ is not the final design for this trait.
+//It won't work as soon as we want to nest messages as arguments inside other
+//messages (e.g. for multiplexing). To enable that usecase, we need an
+//`impl<T> EncodeArgument for T where T: EncodeMessage`, which needs
+//EncodeArgument, EncodeMessage and MessageFormatter to be more structurally
+//similar.
+//
+//I'm kicking this particular can down the road in the hopes that
+//<https://github.com/rust-lang/rust/issues/78485> will land before it becomes
+//a problem. Once we can use std::io::ReadBuf, both traits could be redesigned as
+//
+//trait Encode... {
+//    fn append_encoded_to(&self, buf: &mut std::io::ReadBuf) -> Result<(), BufferTooSmallError>;
+//}
 
 ///A trait that simplifies the implementation of
 ///[`trait EncodeArgument`](trait.EncodeArgument.html) when the implementing type already contains
