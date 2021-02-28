@@ -238,7 +238,7 @@ fn isnum(c: u8) -> bool {
 ////////////////////////////////////////////////////////////////////////////////
 // struct MessageIterator
 
-///An iterator over the list of bytestrings in a message. Messages are defined
+///An iterator over the list of arguments in a message. Messages are defined
 ///in [vt6/foundation, section 3.1](https://vt6.io/std/foundation/#section-3-1).
 ///
 ///The lifetime argument is the lifetime of the buffer from which the
@@ -367,7 +367,7 @@ impl<'s> core::fmt::Debug for MessageIterator<'s> {
 ///[vt6/foundation, section 3.1](https://vt6.io/std/foundation/#section-3-1).
 ///
 ///The lifetime argument is the lifetime of the bytestring from which the
-///message containing this list was parsed.
+///message was parsed.
 ///
 ///This type is only used for reading received messages. To build a message for
 ///sending, use [struct MessageFormatter](struct.MessageFormatter.html) instead.

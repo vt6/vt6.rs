@@ -75,6 +75,9 @@ pub trait MessageHandler<A: server::Application>: Handler<A> {
     ///where `m.as_str() == "foo2"`. If the result is `Some(4)`, the reply `(have foo2.4)` will be
     ///sent. `None` indicates that the module in question is not supported at all, in which case
     ///`(have foo2)` would be sent.
+    ///
+    ///`have` messages are defined in
+    ///[\[vt6/foundation, sect. 4.2\]](https://vt6.io/std/foundation/#section-4-2).
     fn get_supported_module_version(&self, module: &ModuleIdentifier<'_>) -> Option<u16>;
 }
 

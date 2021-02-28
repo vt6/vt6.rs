@@ -21,8 +21,6 @@ pub struct MessageFormatter<'b> {
 impl<'b> MessageFormatter<'b> {
     ///Create a new MessageFormatter. The number of arguments must be given at
     ///this point already because it gets encoded first.
-    ///
-    ///Most users will prefer `format()` over `new()`, see below.
     pub fn new(
         buffer: &'b mut [u8],
         type_name: &str,
@@ -52,7 +50,7 @@ impl<'b> MessageFormatter<'b> {
     ///# Panics
     ///
     ///Panics if more arguments are being added than what has been announced in
-    ///`new()` or `format()`.
+    ///`new()`.
     pub fn add_argument<T: EncodeArgument + ?Sized>(&mut self, arg: &T) {
         if self.remaining_arguments == 0 {
             panic!("vt6::common::core::msg::MessageFormatter::add_argument() called more often than expected");
