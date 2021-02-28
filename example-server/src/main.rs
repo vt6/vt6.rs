@@ -34,14 +34,14 @@ async fn main() -> std::io::Result<()> {
     log::info!("{}", encode_to_string(msg3));
 
     //create an Application instance
-    let app = MyApplication {
+    let app = MyApplicationImpl {
         clients: vec![(client_identity, client_credentials, false)],
         screen_identity: screen_identity.clone(),
         screen_credentials,
         stdin_authorized: false,
         stdout_authorized: false,
     };
-    let app = MyApplicationRef(Arc::new(Mutex::new(app)));
+    let app = MyApplication(Arc::new(Mutex::new(app)));
 
     //create a Dispatch, we will run its event loop down below
     let socket_path = vt6::server::default_socket_path()?;
@@ -96,7 +96,7 @@ fn encode_to_string<M: vt6::common::core::msg::EncodeMessage>(msg: M) -> String 
 ////////////////////////////////////////////////////////////////////////////////
 // Application object
 
-struct MyApplication {
+struct MyApplicationImpl {
     clients: Vec<(ClientIdentity, ClientCredentials, bool)>,
     //This example server has exactly one screen, allocated statically on startup.
     screen_identity: ScreenIdentity,
@@ -106,15 +106,15 @@ struct MyApplication {
 }
 
 #[derive(Clone)]
-struct MyApplicationRef(Arc<Mutex<MyApplication>>);
+struct MyApplication(Arc<Mutex<MyApplicationImpl>>);
 
-impl std::fmt::Debug for MyApplicationRef {
+impl std::fmt::Debug for MyApplication {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("MyApplicationRef(<opaque>)")
+        f.write_str("MyApplication(<opaque>)")
     }
 }
 
-impl vt6::server::Application for MyApplicationRef {
+impl vt6::server::Application for MyApplication {
     type MessageConnector = MyMessageConnector;
     type StdoutConnector = MyStdoutConnector;
     type MessageHandler =
