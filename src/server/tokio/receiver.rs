@@ -35,25 +35,30 @@ pub(crate) fn spawn_receiver<A: server::Application>(
         let mut buf = bytes::BytesMut::with_capacity(1024);
         loop {
             //attempt to fill the buffer
-            if let Err(e) = reader.read_buf(&mut buf).await {
-                let n = server::Notification::ConnectionIOError(e.into());
-                dispatch.app.notify(&n);
-                if let Some(conn) = dispatch.connection_mut(conn_id).alive() {
-                    conn.set_state(server::ConnectionState::Teardown);
+            let bytes_read = match reader.read_buf(&mut buf).await {
+                Err(e) => {
+                    let n = server::Notification::ConnectionIOError(e.into());
+                    dispatch.app.notify(&n);
+                    if let Some(conn) = dispatch.connection_mut(conn_id).alive() {
+                        conn.set_state(server::ConnectionState::Teardown);
+                    }
+                    return;
                 }
-                return;
+                Ok(bytes_read) => bytes_read,
+            };
+
+            if buf.len() > 0 {
+                if let Some(conn) = dispatch.connection_mut(conn_id).alive() {
+                    conn.handle_incoming(&mut buf);
+                }
             }
 
-            if buf.is_empty() {
+            if bytes_read == 0 {
                 //EOF is reached, i.e. the client has disconnected
                 if let Some(conn) = dispatch.connection_mut(conn_id).alive() {
                     conn.set_state(server::ConnectionState::Teardown);
                 }
                 return;
-            }
-
-            if let Some(conn) = dispatch.connection_mut(conn_id).alive() {
-                conn.handle_incoming(&mut buf);
             }
         }
     };
