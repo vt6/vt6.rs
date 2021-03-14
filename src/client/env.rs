@@ -4,12 +4,14 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
+use crate::client::AsyncRuntime;
 use crate::common::core::msg;
 use crate::common::core::msg::DecodeMessage;
 use crate::msg::posix::ParentHello;
 use core::fmt;
 use std::fs::File;
 use std::io::Read;
+use std::marker::PhantomData;
 use std::os::unix::io::FromRawFd;
 
 ///General information about the current client process.
@@ -89,14 +91,17 @@ impl Environment {
     ///Parses the data that was read during `discover()` into an instance of `EnvironmentRef`. This
     ///operation can be repeated as many times as necessary. If `EnvironmentRef` instances are
     ///needed in multiple threads, each thread can run `parse()` on its own.
-    pub fn parse(&self) -> Result<EnvironmentRef<'_>, EnvironmentError<'_>> {
+    pub fn parse<R: AsyncRuntime>(&self) -> Result<EnvironmentRef<'_, R>, EnvironmentError<'_>> {
         use EnvironmentError::*;
         if !self.has_vt6_terminal {
             return Err(NoVT6Terminal);
         }
         let (m, _) = msg::Message::parse(&self.buf[0..self.filled]).map_err(CorruptParentHello)?;
         if let Some(hello) = ParentHello::decode_message(&m) {
-            return Ok(EnvironmentRef { hello });
+            return Ok(EnvironmentRef::<R> {
+                _phantom: PhantomData,
+                hello,
+            });
         }
         Err(InvalidParentHello(m))
     }
@@ -107,11 +112,12 @@ impl Environment {
 ///Unlike `Environment`, which is a singleton by design, instances of this type can be cloned and
 ///passed around freely.
 #[derive(Clone, Debug)]
-pub struct EnvironmentRef<'a> {
+pub struct EnvironmentRef<'a, R: AsyncRuntime> {
+    _phantom: PhantomData<R>,
     hello: ParentHello<'a>,
 }
 
-impl EnvironmentRef<'_> {
+impl<R: AsyncRuntime> EnvironmentRef<'_, R> {
     ///Returns the filesystem path of the terminal's server socket.
     pub fn server_socket_path(&self) -> &std::path::Path {
         self.hello.server_socket_path

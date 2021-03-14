@@ -13,12 +13,23 @@ getrandom = { version = "^0.2",  default-features = false }
 base64    = { version = "^0.13", default-features = false }
 libc      = { version = "^0.2",  default-features = false }
 
-# for the "use_tokio" feature
-tokio   = { version = "^1", optional = true }
+# for the "use_std" feature
 futures = { version = "^0.3", optional = true }
-bytes   = { version = "^1", optional = true }
+
+# for the "use_tokio" feature
+tokio      = { version = "^1",   optional = true }
+tokio-util = { version = "^0.6", optional = true }
+bytes      = { version = "^1",   optional = true }
 
 [features]
 default = ["use_std"]
-use_std = ["getrandom/std", "base64/std", "libc/std"]
-use_tokio = ["use_std", "bytes", "futures", "tokio", "tokio/io-util", "tokio/net", "tokio/rt", "tokio/sync"]
+use_std = [
+  "futures",
+  "getrandom/std", "base64/std", "libc/std",
+]
+use_tokio = [
+  "use_std",
+  "bytes",
+  "tokio", "tokio/io-util", "tokio/net", "tokio/rt", "tokio/sync",
+  "tokio-util", "tokio-util/compat",
+]
